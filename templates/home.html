@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendoor | https://vendoor.com</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script>
+        function gotoRegisterIfLoggedOut(username){
+            if(!username){
+                window.location.href = '/login';
+            } else {
+                window.location.href = '/publish';
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <nav>
+        <h1 class="logo">Vendoor</h1>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            {% if username %}
+            <a href="/publish">Publish</a>
+            <a href="/posts">Listings</a>
+            <a href="/logout" class="btn-login">Logout</a>
+            {% else %}
+            <a href="/login" class="btn-login">Login</a>
+            <a href="/register" class="btn-signup">Sign up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h2>Buy. Sell. Simple.</h2>
+        <p>Items, services, promotions — all in one place.</p>
+        {% if username %}
+        <p class="hero-sub">Welcome, {{ username }}!</p>
+        {% endif %}
+        <a href="{% if username %}/publish{% else %}/login{% endif %}" class="btn-main">Get started</a>
+    </div>
+
+    <div class="feed">
+        <h3>Recent listings</h3>
+        <div class="cards">
+            {% if posts %}
+                {% for post in posts %}
+                <div class="card">
+                    <img src="{{ post.image }}" alt="{{ post.title }}" onclick="openImageModal(this.src)" onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
+                    <div class="card-info">
+                        <span class="category">{{ post.category }}</span>
+                        <h4>{{ post.title }}</h4>
+                        <p class="price">GHS {{ '{:,.2f}'.format(post.price) }}{% if post.promo %} <span class="promo">-{{ post.promo|int }}%</span>{% endif %}</p>
+                        <p class="desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card">
+                    <img src="https://placehold.co/300x200" alt="placeholder">
+                    <div class="card-info">
+                        <span class="category">Electronics</span>
+                        <h4>iPhone 13 Pro</h4>
+                        <p class="price">GHS 450,000.00</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="image-modal" class="image-modal" onclick="closeImageModal(event)">
+        <div class="image-modal-content">
+            <button class="modal-close" onclick="hideImageModal()">×</button>
+            <img id="modal-img" src="" alt="Full image">
+        </div>
+    </div>
+
+    <script>
+    function openImageModal(src) {
+        const modal = document.getElementById('image-modal');
+        const img = document.getElementById('modal-img');
+        img.src = src;
+        modal.style.display = 'flex';
+    }
+
+    function hideImageModal() {
+        const modal = document.getElementById('image-modal');
+        modal.style.display = 'none';
+    }
+
+    function closeImageModal(event) {
+        if (event.target.id === 'image-modal') {
+            hideImageModal();
+        }
+    }
+    </script>
+
+</body>
+</html>

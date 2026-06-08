@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifier l'annonce - Vendoor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Vendoor</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/posts">My listings</a>
+            <a href="/logout" class="btn-login">Logout</a>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-box">
+            <h2>Edit listing</h2>
+            <p class="auth-sub">Update your listing details</p>
+
+            <form method="POST" action="/post/{{ post.id }}/edit" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Listing title</label>
+                    <input type="text" name="title" value="{{ post.title }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="5" required>{{ post.description }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Price (GHS)</label>
+                    <input type="number" step="0.01" name="price" value="{{ post.price }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select name="category" required>
+                        <option value="Electronics" {% if post.category == 'Electronics' %}selected{% endif %}>Electronics</option>
+                        <option value="Clothing" {% if post.category == 'Clothing' %}selected{% endif %}>Clothing</option>
+                        <option value="Accessories" {% if post.category == 'Accessories' %}selected{% endif %}>Accessories</option>
+                        <option value="Furniture" {% if post.category == 'Furniture' %}selected{% endif %}>Furniture</option>
+                        <option value="Service" {% if post.category == 'Service' %}selected{% endif %}>Service</option>
+                        <option value="Other" {% if post.category == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select name="type" required>
+                        <option value="article" {% if post.type == 'article' %}selected{% endif %}>Article</option>
+                        <option value="service" {% if post.type == 'service' %}selected{% endif %}>Service</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Delivery option</label>
+                    <div>
+                        <label><input type="radio" name="delivery_method" value="delivery" {% if post.delivery_method != 'pickup' %}checked{% endif %}> Delivery</label>
+                        <label style="margin-left:12px;"><input type="radio" name="delivery_method" value="pickup" {% if post.delivery_method == 'pickup' %}checked{% endif %}> Pickup</label>
+                    </div>
+                </div>
+                <div class="form-group" id="pickup_location_group_edit" style="{% if post.delivery_method == 'pickup' %}display:block;{% else %}display:none;{% endif %}">
+                    <label>Pickup location</label>
+                    <input type="text" name="pickup_location" value="{{ post.pickup_location or '' }}" placeholder="Enter pickup location">
+                </div>
+                <div class="form-group">
+                    <label>Image actuelle</label>
+                    <img src="{{ post.image }}" alt="{{ post.title }}" style="max-width: 200px; border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label>Changer l'image (optionnel)</label>
+                    <input type="file" name="image_file" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>Promotion (%)</label>
+                    <input type="number" step="1" name="promo" value="{{ post.promo }}" placeholder="ex: 10">
+                </div>
+                <button type="submit" class="btn-submit">Save changes</button>
+            </form>
+
+            <p style="text-align: center; margin-top: 20px;">
+                <a href="/posts" style="color: #e63946; text-decoration: none;">← Back to listings</a>
+            </p>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const radios = document.querySelectorAll('input[name="delivery_method"]');
+    const pickupGroup = document.getElementById('pickup_location_group_edit');
+    if(radios){
+        radios.forEach(r=> r.addEventListener('change', ()=>{
+            if(document.querySelector('input[name="delivery_method"]:checked').value === 'pickup'){
+                pickupGroup.style.display = 'block';
+            } else {
+                pickupGroup.style.display = 'none';
+            }
+        }));
+    }
+});
+</script>
+</body>
+</html>
+</body>
+</html>
