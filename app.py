@@ -360,69 +360,59 @@ def admin_unban_user(user_id):
 
 # --- LANCEMENT ---
 
+def seed_production_data():
+    from seed_data import SEED_USERS, SEED_POSTS
+
+    users_by_email = {}
+    for entry in SEED_USERS:
+        user = User.query.filter_by(email=entry['email']).first()
+        if not user:
+            user = User(
+                username=entry['username'],
+                email=entry['email'],
+                password=bcrypt.generate_password_hash(entry['password']).decode('utf-8'),
+                phone=entry.get('phone') or None,
+                role=entry.get('role', 'user'),
+            )
+            db.session.add(user)
+            db.session.flush()
+        elif entry.get('phone') and not user.phone:
+            user.phone = entry['phone']
+        users_by_email[entry['email']] = user
+
+    db.session.commit()
+
+    for entry in SEED_POSTS:
+        owner = users_by_email.get(entry['user_email'])
+        if not owner:
+            owner = User.query.filter_by(email=entry['user_email']).first()
+        if not owner:
+            continue
+
+        existing = Post.query.filter_by(user_id=owner.id, title=entry['title']).first()
+        if existing:
+            continue
+
+        db.session.add(Post(
+            title=entry['title'],
+            description=entry['description'],
+            price=entry['price'],
+            category=entry['category'],
+            type=entry['type'],
+            image=entry['image'],
+            promo=entry.get('promo', 0),
+            delivery_method=entry.get('delivery_method'),
+            pickup_location=entry.get('pickup_location') or None,
+            user_id=owner.id,
+        ))
+
+    db.session.commit()
+
 def init_db():
     with app.app_context():
         db.create_all()
         ensure_db_schema()
-
-        admin_user = User.query.filter_by(email='admin@vendoor.com').first()
-        if not admin_user:
-            admin_user = User(
-                username='admin',
-                email='admin@vendoor.com',
-                password=bcrypt.generate_password_hash('admin123').decode('utf-8'),
-                role='admin'
-            )
-            db.session.add(admin_user)
-            db.session.commit()
-
-        if Post.query.count() == 0:
-            test_user = User.query.filter_by(email='test@vendoor.com').first()
-            if not test_user:
-                test_user = User(
-                    username='vendoor_test',
-                    email='test@vendoor.com',
-                    password=bcrypt.generate_password_hash('123456').decode('utf-8'),
-                    role='user'
-                )
-                db.session.add(test_user)
-                db.session.commit()
-
-            sample_posts = [
-                Post(
-                    title='iPhone 13 Pro',
-                    description='iPhone 13 Pro en excellent état. Toutes les fonctionnalités marchent parfaitement.',
-                    price=450000,
-                    category='Electronics',
-                    type='article',
-                    image='https://images.unsplash.com/photo-1592286927505-1def25115558?w=400',
-                    promo=0,
-                    user_id=test_user.id
-                ),
-                Post(
-                    title='Computer repair',
-                    description='PC, laptop repair, software installation, virus removal. Fast and reliable.',
-                    price=5000,
-                    category='Service',
-                    type='service',
-                    image='https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400',
-                    promo=0,
-                    user_id=test_user.id
-                ),
-                Post(
-                    title='Campus courier',
-                    description='Fast delivery on campus. Parcels, documents and more.',
-                    price=1000,
-                    category='Delivery',
-                    type='service',
-                    image='https://images.unsplash.com/photo-1606576509773-297b51b64d84?w=400',
-                    promo=0,
-                    user_id=test_user.id
-                )
-            ]
-            for post in sample_posts:
-                db.session.add(post)
-            db.session.commit()
+        seed_production_data()
 
 init_db()
 
