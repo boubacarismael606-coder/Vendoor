@@ -1,0 +1,3535 @@
+### .gitignore
+
+venv/
+
+__pycache__/
+
+instance/
+
+*.pyc
+
+*.pyo
+
+*.pyd
+
+.Python
+
+env/
+
+ENV/
+
+venv.bak/
+
+*.sqlite3
+
+*.db
+
+
+### README.md
+
+# Vendoor
+
+
+
+Vendoor is a Flask-based campus marketplace web app built with SQLite and simple user authentication.
+
+
+
+## Local setup
+
+
+
+1. Create a virtual environment:
+
+   ```bash
+
+   python -m venv venv
+
+   .\venv\Scripts\activate
+
+   ```
+
+2. Install dependencies:
+
+   ```bash
+
+   pip install -r requirements.txt
+
+   ```
+
+3. Run the app:
+
+   ```bash
+
+   python app.py
+
+   ```
+
+4. Open the app in your browser at `http://127.0.0.1:5000`.
+
+
+
+## Deployment
+
+
+
+To make Vendoor public, host it on a cloud platform and point your domain to the service.
+
+
+
+### Recommended host: Render
+
+
+
+Render is the best choice for this Flask app because it supports Python services directly and is easy to connect to GitHub.
+
+
+
+### What is already ready
+
+
+
+- `requirements.txt` for dependencies
+
+- `Procfile` for process startup
+
+- `runtime.txt` for Python version
+
+- `render.yaml` for Render service configuration
+
+
+
+### Deploy on Render
+
+
+
+1. Create a GitHub repository and push this project.
+
+2. Create a Render account at `https://render.com`.
+
+3. In Render, choose "New +" → "Web Service".
+
+4. Connect your GitHub account and select the repo.
+
+5. Set the build command to:
+
+   ```bash
+
+   pip install -r requirements.txt
+
+   ```
+
+6. Set the start command to:
+
+   ```bash
+
+   python app.py
+
+   ```
+
+7. Deploy the service.
+
+
+
+Render will give you a public URL once deployment succeeds.
+
+
+
+### Domain setup on Render
+
+
+
+1. Register a domain such as `vendoor.com`.
+
+2. In Render, open your service settings and add the custom domain.
+
+3. Configure the DNS records as Render instructs.
+
+4. Render will automatically provision HTTPS.
+
+
+
+### If you want a test deployment now
+
+
+
+If you already have a GitHub account, the fastest path is:
+
+- create a GitHub repo for this project
+
+- push the files
+
+- connect the repo in Render
+
+
+
+If you want, I can give you the exact Git commands to run next, or I can guide you through the GitHub repo creation step by step.
+
+
+
+## Notes
+
+
+
+- The app currently uses SQLite (`instance/vendoor.db`). For a production-ready deployment, consider using a hosted database service such as PostgreSQL.
+
+- If you want a temporary public URL while developing locally, use a tunneling service like ngrok.
+
+
+
+## Next step
+
+
+
+If you want, I can help you deploy this app to a specific platform such as Railway or Render and configure the domain routing too.
+
+
+### app.py
+
+from flask import Flask, render_template, request, redirect, url_for, session
+
+from flask_sqlalchemy import SQLAlchemy
+
+from sqlalchemy import func
+
+from flask_bcrypt import Bcrypt
+
+from datetime import datetime
+
+import os
+
+import uuid
+
+from werkzeug.utils import secure_filename
+
+
+
+app = Flask(__name__)
+
+app.config['SECRET_KEY'] = 'vendoor-secret-key'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vendoor.db'
+
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images')
+
+db = SQLAlchemy(app)
+
+bcrypt = Bcrypt(app)
+
+
+
+# allowed image extensions
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
+
+def allowed_file(filename):
+
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+
+@app.context_processor
+
+def utility_processor():
+
+    def image_url(image_path):
+
+        if not image_path:
+
+            return 'https://placehold.co/300x200'
+
+        if image_path.startswith('http://') or image_path.startswith('https://'):
+
+            return image_path
+
+        return url_for('static', filename=image_path)
+
+    return dict(image_url=image_url)
+
+
+
+# --- TABLES ---
+
+
+
+class User(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    username = db.Column(db.String(50), unique=True, nullable=False)
+
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+    password = db.Column(db.String(200), nullable=False)
+
+    role = db.Column(db.String(10), default='user')
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+
+class Post(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    title = db.Column(db.String(100), nullable=False)
+
+    description = db.Column(db.Text, nullable=False)
+
+    price = db.Column(db.Float, nullable=False)
+
+    category = db.Column(db.String(50), nullable=False)
+
+    type = db.Column(db.String(10), nullable=False)
+
+    image = db.Column(db.String(200), nullable=False)
+
+    promo = db.Column(db.Float, default=0)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    delivery_method = db.Column(db.String(20), nullable=True)  # 'delivery' or 'pickup'
+
+    pickup_location = db.Column(db.String(200), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+
+class Transaction(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+
+    buyer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    seller_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+
+    commission = db.Column(db.Float, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+
+# --- ROUTES ---
+
+
+
+@app.route('/')
+
+def home():
+
+    username = session.get('username')
+
+    posts = Post.query.order_by(Post.created_at.desc()).all()
+
+    return render_template('home.html', username=username, posts=posts)
+
+
+
+@app.route('/publish', methods=['GET', 'POST'])
+
+def publish():
+
+    if 'user_id' not in session:
+
+        return redirect(url_for('login'))
+
+
+
+    if request.method == 'POST':
+
+        title = request.form['title']
+
+        description = request.form['description']
+
+        price = float(request.form['price'])
+
+        category = request.form['category']
+
+        post_type = request.form['type']
+
+        delivery_method = request.form.get('delivery_method', 'delivery')
+
+        pickup_location = request.form.get('pickup_location', '').strip()
+
+        image = request.form.get('image', '').strip()
+
+        promo = float(request.form.get('promo', 0) or 0)
+
+
+
+        # handle uploaded file if provided
+
+        image_file = request.files.get('image_file')
+
+        if image_file and image_file.filename:
+
+            if allowed_file(image_file.filename):
+
+                # ensure upload folder exists
+
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+                ext = secure_filename(image_file.filename).rsplit('.', 1)[1].lower()
+
+                filename = f"{uuid.uuid4().hex}.{ext}"
+
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+                image_file.save(filepath)
+
+                # store relative path to static image for templates
+
+                image = f'images/{filename}'
+
+            else:
+
+                return render_template('publish.html', error="Type d'image non supporté. Utilisez png/jpg/gif/webp.")
+
+        # if no uploaded file and no external URL, use placeholder
+
+        if not image:
+
+            image = 'https://placehold.co/300x200'
+
+
+
+        new_post = Post(
+
+            title=title,
+
+            description=description,
+
+            price=price,
+
+            category=category,
+
+            type=post_type,
+
+            image=image,
+
+            promo=promo,
+
+            delivery_method=delivery_method,
+
+            pickup_location=pickup_location,
+
+            user_id=session['user_id']
+
+        )
+
+        db.session.add(new_post)
+
+        db.session.commit()
+
+        return redirect(url_for('home'))
+
+
+
+    return render_template('publish.html')
+
+
+
+@app.route('/login', methods=['GET', 'POST'])
+
+def login():
+
+    if request.method == 'POST':
+
+        email = request.form['email'].strip().lower()
+
+        password = request.form['password']
+
+        user = User.query.filter(func.lower(User.email) == email).first()
+
+
+
+        if not user or not bcrypt.check_password_hash(user.password, password):
+
+            return render_template('login.html', error="Email ou mot de passe invalide.")
+
+
+
+        session['user_id'] = user.id
+
+        session['username'] = user.username
+
+        return redirect(url_for('home'))
+
+
+
+    return render_template('login.html')
+
+
+
+@app.route('/logout')
+
+def logout():
+
+    session.pop('user_id', None)
+
+    session.pop('username', None)
+
+    return redirect(url_for('home'))
+
+
+
+@app.route('/register', methods=['GET', 'POST'])
+
+def register():
+
+    if request.method == 'POST':
+
+        username = request.form['username'].strip()
+
+        email = request.form['email'].strip().lower()
+
+        password = request.form['password']
+
+        confirm = request.form['confirm_password']
+
+
+
+        # require terms checkbox (server-side)
+
+        if 'terms' not in request.form:
+
+            return render_template('register.html', error="Vous devez accepter les conditions et la commission de 5%.")
+
+
+
+        # password length validation
+
+        if len(password) < 6:
+
+            return render_template('register.html', error="Le mot de passe doit contenir au moins 6 caractères.")
+
+
+
+        if password != confirm:
+
+            return render_template('register.html', error="Les mots de passe ne correspondent pas.")
+
+
+
+        existing_user = User.query.filter_by(email=email).first()
+
+        if existing_user:
+
+            return render_template('register.html', error="Cet email est déjà utilisé.")
+
+
+
+        existing_username = User.query.filter_by(username=username).first()
+
+        if existing_username:
+
+            return render_template('register.html', error="Ce nom d'utilisateur est déjà pris.")
+
+
+
+        hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+
+        new_user = User(username=username, email=email, password=hashed_pw)
+
+        db.session.add(new_user)
+
+        db.session.commit()
+
+
+
+        session['user_id'] = new_user.id
+
+        session['username'] = new_user.username
+
+        return redirect(url_for('home'))
+
+
+
+    return render_template('register.html')
+
+
+
+@app.route('/posts')
+
+def posts_list():
+
+    username = session.get('username')
+
+    user_id = session.get('user_id')
+
+    posts = Post.query.order_by(Post.created_at.desc()).all()
+
+    return render_template('posts.html', username=username, user_id=user_id, posts=posts)
+
+
+
+@app.route('/post/<int:post_id>/edit', methods=['GET', 'POST'])
+
+def edit_post(post_id):
+
+    if 'user_id' not in session:
+
+        return redirect(url_for('login'))
+
+
+
+    post = Post.query.get_or_404(post_id)
+
+
+
+    if post.user_id != session['user_id']:
+
+        return redirect(url_for('posts_list'))
+
+
+
+    if request.method == 'POST':
+
+        post.title = request.form['title']
+
+        post.description = request.form['description']
+
+        post.price = float(request.form['price'])
+
+        post.category = request.form['category']
+
+        post.type = request.form['type']
+
+        post.delivery_method = request.form.get('delivery_method', post.delivery_method)
+
+        post.pickup_location = request.form.get('pickup_location', post.pickup_location)
+
+        post.promo = float(request.form.get('promo', 0) or 0)
+
+
+
+        # handle new image upload
+
+        image_file = request.files.get('image_file')
+
+        if image_file and image_file.filename:
+
+            if allowed_file(image_file.filename):
+
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+                ext = secure_filename(image_file.filename).rsplit('.', 1)[1].lower()
+
+                filename = f"{uuid.uuid4().hex}.{ext}"
+
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+                image_file.save(filepath)
+
+                post.image = f'images/{filename}'
+
+
+
+        db.session.commit()
+
+        return redirect(url_for('posts_list'))
+
+
+
+    return render_template('edit_post.html', post=post)
+
+
+
+@app.route('/post/<int:post_id>/delete', methods=['POST'])
+
+def delete_post(post_id):
+
+    if 'user_id' not in session:
+
+        return redirect(url_for('login'))
+
+
+
+    post = Post.query.get_or_404(post_id)
+
+
+
+    if post.user_id != session['user_id']:
+
+        return redirect(url_for('posts_list'))
+
+
+
+    db.session.delete(post)
+
+    db.session.commit()
+
+    return redirect(url_for('posts_list'))
+
+
+
+# --- LANCEMENT ---
+
+@app.route('/post/<int:post_id>')
+
+def post_detail(post_id):
+
+    post = Post.query.get_or_404(post_id)
+
+    seller = User.query.get(post.user_id)
+
+    username = session.get('username')
+
+    session_user_id = session.get('user_id')
+
+    return render_template('post_detail.html', post=post, seller=seller, username=username, session_user_id=session_user_id)
+
+if __name__ == '__main__':
+
+    with app.app_context():
+
+        db.create_all()
+
+
+
+        # seed initial posts if none exist
+
+        if Post.query.count() == 0:
+
+            # create a test user for these posts
+
+            test_user = User.query.filter_by(email='test@vendoor.com').first()
+
+            if not test_user:
+
+                test_user = User(
+
+                    username='vendoor_test',
+
+                    email='test@vendoor.com',
+
+                    password=bcrypt.generate_password_hash('123456').decode('utf-8'),
+
+                    role='user'
+
+                )
+
+                db.session.add(test_user)
+
+                db.session.commit()
+
+
+
+            # add sample posts
+
+            sample_posts = [
+
+                Post(
+
+                    title='iPhone 13 Pro',
+
+                    description='iPhone 13 Pro en excellent état. Toutes les fonctionnalités marchent parfaitement.',
+
+                    price=450000,
+
+                    category='Électronique',
+
+                    type='article',
+
+                    image='https://images.unsplash.com/photo-1592286927505-1def25115558?w=400',
+
+                    promo=0,
+
+                    user_id=test_user.id
+
+                ),
+
+                Post(
+
+                    title='Dépannage informatique',
+
+                    description='Reparation de PC, laptop, installation de logiciels, nettoyage virus. Intervention rapide et efficace.',
+
+                    price=5000,
+
+                    category='Service',
+
+                    type='service',
+
+                    image='https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400',
+
+                    promo=0,
+
+                    user_id=test_user.id
+
+                ),
+
+                Post(
+
+                    title='Coursier campus',
+
+                    description='Service de livraison rapide sur le campus. Livraison de colis, documents et autres articles.',
+
+                    price=1000,
+
+                    category='Livraison',
+
+                    type='service',
+
+                    image='https://images.unsplash.com/photo-1606576509773-297b51b64d84?w=400',
+
+                    promo=0,
+
+                    user_id=test_user.id
+
+                )
+
+            ]
+
+            for post in sample_posts:
+
+                db.session.add(post)
+
+            db.session.commit()
+
+
+
+        print("Base de données créée ✅")
+
+    app.run(debug=True)
+
+
+### download_ngrok.py
+
+import urllib.request
+
+import zipfile
+
+import io
+
+import os
+
+
+
+url = 'https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip'
+
+path = os.path.expanduser(r'~\\AppData\\Local\\ngrok')
+
+print('target', path)
+
+os.makedirs(path, exist_ok=True)
+
+with urllib.request.urlopen(url, timeout=120) as r:
+
+    data = r.read()
+
+print('downloaded', len(data), 'bytes')
+
+with zipfile.ZipFile(io.BytesIO(data)) as zf:
+
+    names = zf.namelist()
+
+    print('names', names)
+
+    for name in names:
+
+        if name.endswith('ngrok.exe'):
+
+            outpath = os.path.join(path, 'ngrok.exe')
+
+            with open(outpath, 'wb') as f:
+
+                f.write(zf.read(name))
+
+            print('wrote', outpath)
+
+
+### download_ngrok_chunked.py
+
+import urllib.request
+
+import zipfile
+
+import io
+
+import os
+
+
+
+url = 'https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip'
+
+path = os.path.expanduser(r'~\\AppData\\Local\\ngrok')
+
+print('target', path)
+
+os.makedirs(path, exist_ok=True)
+
+req = urllib.request.Request(url, headers={
+
+    'User-Agent': 'Mozilla/5.0'
+
+})
+
+with urllib.request.urlopen(req, timeout=120) as r:
+
+    total = 0
+
+    buf = io.BytesIO()
+
+    while True:
+
+        chunk = r.read(8192)
+
+        if not chunk:
+
+            break
+
+        buf.write(chunk)
+
+        total += len(chunk)
+
+    print('downloaded', total, 'bytes')
+
+    data = buf.getvalue()
+
+print('len data', len(data))
+
+with zipfile.ZipFile(io.BytesIO(data)) as zf:
+
+    names = zf.namelist()
+
+    print('names', names)
+
+    for name in names:
+
+        if name.endswith('ngrok.exe'):
+
+            outpath = os.path.join(path, 'ngrok.exe')
+
+            with open(outpath, 'wb') as f:
+
+                f.write(zf.read(name))
+
+            print('wrote', outpath)
+
+
+### generate_code_summary.py
+
+import os
+
+root = os.getcwd()
+
+text_extensions = {'.py','.html','.css','.md','.txt','.yaml','.yml','.gitignore','.ini','.cfg','.json'}
+
+output_path = os.path.join(root, 'vendoor_code_summary.txt')
+
+files=[]
+
+for dirpath, dirnames, filenames in os.walk(root):
+
+    if dirpath.endswith(os.path.join('static','images')):
+
+        continue
+
+    for fname in filenames:
+
+        if fname.startswith('.') and fname != '.gitignore':
+
+            continue
+
+        ext = os.path.splitext(fname)[1].lower()
+
+        if ext in text_extensions or fname == '.gitignore':
+
+            files.append(os.path.join(dirpath, fname))
+
+files.sort()
+
+with open(output_path, 'w', encoding='utf-8') as out:
+
+    for f in files:
+
+        rel = os.path.relpath(f, root).replace('\\','/')
+
+        out.write(f'### {rel}\n\n')
+
+        with open(f, 'r', encoding='utf-8', errors='replace') as inf:
+
+            content = inf.read().strip()
+
+        lines = content.splitlines()
+
+        for line in lines:
+
+            out.write(line.rstrip() + '\n\n')
+
+        out.write('\n')
+
+print('created', output_path)
+
+
+### ngrok_tunnel.py
+
+from pyngrok import ngrok
+
+
+
+public_url = ngrok.connect(5000).public_url
+
+print(public_url)
+
+
+### render.yaml
+
+services:
+
+  - type: web
+
+    name: vendoor
+
+    env: python
+
+    plan: free
+
+    region: oregon
+
+    buildCommand: pip install -r requirements.txt
+
+    startCommand: python app.py
+
+    autoDeploy: true
+
+
+### requirements.txt
+
+Flask>=2.0
+
+Flask-SQLAlchemy>=3.0
+
+Flask-Bcrypt>=1.0
+
+Werkzeug>=2.0
+
+
+### runtime.txt
+
+python-3.11.4
+
+
+### static/css/style.css
+
+* {
+
+    margin: 0;
+
+    padding: 0;
+
+    box-sizing: border-box;
+
+    font-family: 'Segoe UI', sans-serif;
+
+}
+
+
+
+body {
+
+    background: #f5f5f5;
+
+    color: #222;
+
+}
+
+
+
+nav {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 16px 32px;
+
+    background: white;
+
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+
+}
+
+
+
+.logo {
+
+    color: #e63946;
+
+    font-size: 24px;
+
+    font-weight: 800;
+
+}
+
+
+
+.nav-links a {
+
+    margin-left: 20px;
+
+    text-decoration: none;
+
+    color: #333;
+
+    font-weight: 500;
+
+}
+
+
+
+.btn-login {
+
+    color: #e63946 !important;
+
+}
+
+
+
+.btn-signup {
+
+    background: #e63946;
+
+    color: white !important;
+
+    padding: 8px 16px;
+
+    border-radius: 8px;
+
+}
+
+
+
+.hero {
+
+    text-align: center;
+
+    padding: 80px 20px;
+
+    background: white;
+
+    margin-top: 1px;
+
+}
+
+
+
+.hero h2 {
+
+    font-size: 40px;
+
+    font-weight: 800;
+
+    margin-bottom: 12px;
+
+}
+
+
+
+.hero p {
+
+    color: #666;
+
+    font-size: 18px;
+
+    margin-bottom: 28px;
+
+}
+
+
+
+.hero-sub {
+
+    color: #555;
+
+    margin-bottom: 18px;
+
+    font-size: 16px;
+
+}
+
+
+
+.btn-main {
+
+    background: #e63946;
+
+    color: white;
+
+    padding: 14px 32px;
+
+    border-radius: 10px;
+
+    text-decoration: none;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+}
+
+
+
+.feed {
+
+    max-width: 1100px;
+
+    margin: 40px auto;
+
+    padding: 0 20px;
+
+}
+
+
+
+.feed h3 {
+
+    font-size: 22px;
+
+    margin-bottom: 20px;
+
+}
+
+
+
+.cards {
+
+    display: grid;
+
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+
+    gap: 20px;
+
+}
+
+
+
+.card {
+
+    background: white;
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+
+    transition: transform 0.2s;
+
+}
+
+
+
+.card:hover {
+
+    transform: translateY(-4px);
+
+}
+
+
+
+.card img {
+
+    width: 100%;
+
+    height: 160px;
+
+    object-fit: cover;
+
+    object-position: center;
+
+}
+
+
+
+.card-info {
+
+    padding: 14px;
+
+}
+
+
+
+.category {
+
+    background: #fff8e1;
+
+    color: #8a6d00;
+
+    font-size: 12px;
+
+    padding: 4px 10px;
+
+    border-radius: 20px;
+
+    font-weight: 600;
+
+}
+
+
+
+.promo {
+
+    margin-left: 8px;
+
+    color: #2a9d8f;
+
+    font-weight: 700;
+
+}
+
+
+
+.card-info h4 {
+
+    margin: 10px 0 6px;
+
+    font-size: 16px;
+
+}
+
+
+
+.price {
+
+    color: #e63946;
+
+    font-weight: 700;
+
+    font-size: 15px;
+
+}
+
+/* AUTH */
+
+
+
+.auth-container {
+
+    min-height: 90vh;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 40px 20px;
+
+}
+
+
+
+.auth-box {
+
+    background: white;
+
+    padding: 40px;
+
+    border-radius: 16px;
+
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+
+    width: 100%;
+
+    max-width: 440px;
+
+}
+
+
+
+.auth-box h2 {
+
+    font-size: 26px;
+
+    margin-bottom: 6px;
+
+}
+
+
+
+.auth-sub {
+
+    color: #888;
+
+    margin-bottom: 28px;
+
+    font-size: 14px;
+
+}
+
+
+
+.form-group {
+
+    margin-bottom: 18px;
+
+}
+
+
+
+.form-group label {
+
+    display: block;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    margin-bottom: 6px;
+
+    color: #333;
+
+}
+
+
+
+.form-group input[type="text"],
+
+.form-group input[type="email"],
+
+.form-group input[type="password"] {
+
+    width: 100%;
+
+    padding: 12px 16px;
+
+    border: 1.5px solid #e0e0e0;
+
+    border-radius: 10px;
+
+    font-size: 15px;
+
+    outline: none;
+
+    transition: border 0.2s;
+
+}
+
+
+
+.form-group textarea,
+
+.form-group select {
+
+    width: 100%;
+
+    padding: 12px 16px;
+
+    border: 1.5px solid #e0e0e0;
+
+    border-radius: 10px;
+
+    font-size: 15px;
+
+    outline: none;
+
+    transition: border 0.2s;
+
+    resize: vertical;
+
+}
+
+
+
+.form-group input:focus,
+
+.form-group textarea:focus,
+
+.form-group select:focus {
+
+    border-color: #e63946;
+
+}
+
+
+
+.checkbox-group {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 10px;
+
+}
+
+
+
+.checkbox-group input {
+
+    margin-top: 3px;
+
+    accent-color: #e63946;
+
+}
+
+
+
+.checkbox-group label {
+
+    font-size: 13px;
+
+    color: #555;
+
+    font-weight: 400;
+
+}
+
+
+
+.btn-submit {
+
+    width: 100%;
+
+    padding: 14px;
+
+    background: #e63946;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    margin-top: 8px;
+
+    transition: background 0.2s;
+
+}
+
+
+
+.btn-submit:hover {
+
+    background: #c1121f;
+
+}
+
+
+
+.auth-footer {
+
+    text-align: center;
+
+    margin-top: 20px;
+
+    font-size: 14px;
+
+    color: #666;
+
+}
+
+
+
+.auth-footer a {
+
+    color: #e63946;
+
+    font-weight: 600;
+
+    text-decoration: none;
+
+}
+
+
+
+.alert-error {
+
+    background: #fff0f0;
+
+    color: #e63946;
+
+    padding: 12px 16px;
+
+    border-radius: 8px;
+
+    margin-bottom: 20px;
+
+    font-size: 14px;
+
+    border: 1px solid #ffc0c0;
+
+}
+
+
+
+.logo {
+
+    color: #e63946;
+
+    font-size: 22px;
+
+    font-weight: 800;
+
+    text-decoration: none;
+
+}
+
+
+
+.password-wrapper {
+
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+
+}
+
+
+
+.password-wrapper input {
+
+    flex: 1;
+
+}
+
+
+
+.toggle-password {
+
+    position: absolute;
+
+    right: 12px;
+
+    background: none;
+
+    border: none;
+
+    cursor: pointer;
+
+    font-size: 18px;
+
+    padding: 0;
+
+    color: #666;
+
+}
+
+
+
+/* POSTS LIST */
+
+
+
+.posts-container {
+
+    max-width: 1100px;
+
+    margin: 40px auto;
+
+    padding: 0 20px;
+
+}
+
+
+
+.posts-container h2 {
+
+    font-size: 28px;
+
+    margin-bottom: 30px;
+
+    color: #222;
+
+}
+
+
+
+.posts-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 20px;
+
+}
+
+
+
+.post-card {
+
+    display: flex;
+
+    background: white;
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+
+    transition: transform 0.2s, box-shadow 0.2s;
+
+}
+
+
+
+.post-card:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+
+}
+
+
+
+.post-image {
+
+    width: 220px;
+
+    height: 160px;
+
+    object-fit: cover;
+
+    flex-shrink: 0;
+
+}
+
+
+
+.post-content {
+
+    flex: 1;
+
+    padding: 20px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: space-between;
+
+}
+
+
+
+.post-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: flex-start;
+
+    margin-bottom: 10px;
+
+}
+
+
+
+.post-header h3 {
+
+    font-size: 20px;
+
+    margin: 0;
+
+    flex: 1;
+
+}
+
+
+
+.post-image-link,
+
+.post-title-link {
+
+    color: inherit;
+
+    text-decoration: none;
+
+}
+
+
+
+.post-image-link {
+
+    display: block;
+
+}
+
+
+
+.post-category {
+
+    background: #fff8e1;
+
+    color: #8a6d00;
+
+    font-size: 12px;
+
+    padding: 6px 12px;
+
+    border-radius: 20px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    margin-left: 10px;
+
+}
+
+
+
+.post-description {
+
+    color: #666;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    margin: 10px 0;
+
+    flex: 1;
+
+}
+
+
+
+.post-footer {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-top: 15px;
+
+    border-top: 1px solid #f0f0f0;
+
+    padding-top: 15px;
+
+}
+
+
+
+.post-info {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+}
+
+
+
+.post-price {
+
+    font-weight: 700;
+
+    color: #e63946;
+
+    font-size: 16px;
+
+}
+
+
+
+.post-type {
+
+    background: #e8f4f8;
+
+    color: #0288d1;
+
+    padding: 4px 10px;
+
+    border-radius: 8px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+}
+
+
+
+.promo-badge {
+
+    background: #fff3e0;
+
+    color: #f57c00;
+
+    padding: 4px 10px;
+
+    border-radius: 8px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+}
+
+
+
+.post-actions {
+
+    display: flex;
+
+    gap: 10px;
+
+}
+
+
+
+.btn-edit, .btn-delete {
+
+    padding: 8px 16px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s;
+
+    text-decoration: none;
+
+    display: inline-block;
+
+}
+
+
+
+.btn-edit {
+
+    background: #4caf50;
+
+    color: white;
+
+}
+
+
+
+.btn-edit:hover {
+
+    background: #388e3c;
+
+}
+
+
+
+.btn-delete {
+
+    background: #f44336;
+
+    color: white;
+
+}
+
+
+
+.btn-delete:hover {
+
+    background: #d32f2f;
+
+}
+
+
+
+.card img,
+
+.post-image {
+
+    cursor: pointer;
+
+}
+
+
+
+.image-modal {
+
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,0.75);
+
+    justify-content: center;
+
+    align-items: center;
+
+    z-index: 1000;
+
+    padding: 20px;
+
+}
+
+
+
+.image-modal-content {
+
+    position: relative;
+
+    max-width: 90%;
+
+    max-height: 90%;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+
+    align-items: center;
+
+}
+
+
+
+.image-modal-content img {
+
+    max-width: 100%;
+
+    max-height: 80vh;
+
+    border-radius: 16px;
+
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+
+}
+
+
+
+.modal-close {
+
+    position: absolute;
+
+    top: -10px;
+
+    right: -10px;
+
+    width: 36px;
+
+    height: 36px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    color: #333;
+
+    font-size: 24px;
+
+    cursor: pointer;
+
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+
+}
+
+
+
+.modal-back {
+
+    background: #e63946;
+
+    color: white;
+
+    border: none;
+
+    padding: 10px 18px;
+
+    border-radius: 10px;
+
+    cursor: pointer;
+
+    font-weight: 700;
+
+}
+
+
+
+.modal-back:hover {
+
+    background: #c1121f;
+
+}
+
+/* DETAIL PAGE */
+
+
+
+.detail-container {
+
+    max-width: 1100px;
+
+    margin: 40px auto;
+
+    padding: 0 20px;
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 40px;
+
+    align-items: start;
+
+}
+
+
+
+.detail-image-box img {
+
+    width: 100%;
+
+    border-radius: 16px;
+
+    object-fit: cover;
+
+    max-height: 450px;
+
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+
+}
+
+
+
+.detail-info-box {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+
+}
+
+
+
+.detail-top {
+
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+
+}
+
+
+
+.detail-title {
+
+    font-size: 28px;
+
+    font-weight: 800;
+
+    color: #222;
+
+}
+
+
+
+.detail-price-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+}
+
+
+
+.detail-price {
+
+    font-size: 26px;
+
+    font-weight: 800;
+
+    color: #e63946;
+
+}
+
+
+
+.detail-price-old {
+
+    font-size: 18px;
+
+    color: #aaa;
+
+    text-decoration: line-through;
+
+}
+
+
+
+.detail-description {
+
+    color: #555;
+
+    font-size: 15px;
+
+    line-height: 1.7;
+
+    border-top: 1px solid #f0f0f0;
+
+    padding-top: 16px;
+
+}
+
+
+
+.detail-meta {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    background: #f9f9f9;
+
+    padding: 16px;
+
+    border-radius: 12px;
+
+    font-size: 14px;
+
+    color: #444;
+
+}
+
+
+
+.detail-actions {
+
+    margin-top: 8px;
+
+}
+
+
+
+.btn-whatsapp {
+
+    display: inline-block;
+
+    background: #25d366;
+
+    color: white;
+
+    padding: 14px 28px;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+    transition: background 0.2s;
+
+}
+
+
+
+.btn-whatsapp:hover {
+
+    background: #1da851;
+
+}
+
+
+
+@media (max-width: 768px) {
+
+    .detail-container {
+
+        grid-template-columns: 1fr;
+
+    }
+
+}
+
+a.card {
+
+    display: block;
+
+    text-decoration: none;
+
+    color: inherit;
+
+}
+
+a.post-card {
+
+    display: flex;
+
+    text-decoration: none;
+
+    color: inherit;
+
+}
+
+
+### templates/edit_post.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Modifier l'annonce - Vendoor</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <a href="/" class="logo">Vendoor</a>
+
+        <div class="nav-links">
+
+            <a href="/">Home</a>
+
+            <a href="/posts">My listings</a>
+
+            <a href="/logout" class="btn-login">Logout</a>
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="auth-container">
+
+        <div class="auth-box">
+
+            <h2>Edit listing</h2>
+
+            <p class="auth-sub">Update your listing details</p>
+
+
+
+            <form method="POST" action="/post/{{ post.id }}/edit" enctype="multipart/form-data">
+
+                <div class="form-group">
+
+                    <label>Listing title</label>
+
+                    <input type="text" name="title" value="{{ post.title }}" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Description</label>
+
+                    <textarea name="description" rows="5" required>{{ post.description }}</textarea>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Price (GHS)</label>
+
+                    <input type="number" step="0.01" name="price" value="{{ post.price }}" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Category</label>
+
+                    <select name="category" required>
+
+                        <option value="Electronics" {% if post.category == 'Electronics' %}selected{% endif %}>Electronics</option>
+
+                        <option value="Clothing" {% if post.category == 'Clothing' %}selected{% endif %}>Clothing</option>
+
+                        <option value="Accessories" {% if post.category == 'Accessories' %}selected{% endif %}>Accessories</option>
+
+                        <option value="Furniture" {% if post.category == 'Furniture' %}selected{% endif %}>Furniture</option>
+
+                        <option value="Service" {% if post.category == 'Service' %}selected{% endif %}>Service</option>
+
+                        <option value="Other" {% if post.category == 'Other' %}selected{% endif %}>Other</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Type</label>
+
+                    <select name="type" required>
+
+                        <option value="article" {% if post.type == 'article' %}selected{% endif %}>Article</option>
+
+                        <option value="service" {% if post.type == 'service' %}selected{% endif %}>Service</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Delivery option</label>
+
+                    <div>
+
+                        <label><input type="radio" name="delivery_method" value="delivery" {% if post.delivery_method != 'pickup' %}checked{% endif %}> Delivery</label>
+
+                        <label style="margin-left:12px;"><input type="radio" name="delivery_method" value="pickup" {% if post.delivery_method == 'pickup' %}checked{% endif %}> Pickup</label>
+
+                    </div>
+
+                </div>
+
+                <div class="form-group" id="pickup_location_group_edit" style="{% if post.delivery_method == 'pickup' %}display:block;{% else %}display:none;{% endif %}">
+
+                    <label>Pickup location</label>
+
+                    <input type="text" name="pickup_location" value="{{ post.pickup_location or '' }}" placeholder="Enter pickup location">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Image actuelle</label>
+
+                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" style="max-width: 200px; border-radius: 8px;">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Changer l'image (optionnel)</label>
+
+                    <input type="file" name="image_file" accept="image/*">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Promotion (%)</label>
+
+                    <input type="number" step="1" name="promo" value="{{ post.promo }}" placeholder="ex: 10">
+
+                </div>
+
+                <button type="submit" class="btn-submit">Save changes</button>
+
+            </form>
+
+
+
+            <p style="text-align: center; margin-top: 20px;">
+
+                <a href="/posts" style="color: #e63946; text-decoration: none;">← Back to listings</a>
+
+            </p>
+
+        </div>
+
+    </div>
+
+
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function(){
+
+    const radios = document.querySelectorAll('input[name="delivery_method"]');
+
+    const pickupGroup = document.getElementById('pickup_location_group_edit');
+
+    if(radios){
+
+        radios.forEach(r=> r.addEventListener('change', ()=>{
+
+            if(document.querySelector('input[name="delivery_method"]:checked').value === 'pickup'){
+
+                pickupGroup.style.display = 'block';
+
+            } else {
+
+                pickupGroup.style.display = 'none';
+
+            }
+
+        }));
+
+    }
+
+});
+
+</script>
+
+</body>
+
+</html>
+
+</body>
+
+</html>
+
+
+### templates/home.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Vendoor</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <h1 class="logo">Vendoor</h1>
+
+        <div class="nav-links">
+
+            <a href="/">Home</a>
+
+            {% if username %}
+
+            <a href="/publish">Publish</a>
+
+            <a href="/posts">Listings</a>
+
+            <a href="/logout" class="btn-login">Logout</a>
+
+            {% else %}
+
+            <a href="/login" class="btn-login">Login</a>
+
+            <a href="/register" class="btn-signup">Sign up</a>
+
+            {% endif %}
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="hero">
+
+        <h2>Buy. Sell. Simple.</h2>
+
+        <p>Items, services, promotions — all in one place.</p>
+
+        {% if username %}
+
+        <p class="hero-sub">Welcome, {{ username }}!</p>
+
+        {% endif %}
+
+        <a href="{% if username %}/publish{% else %}/login{% endif %}" class="btn-main">Get started</a>
+
+    </div>
+
+
+
+    <div class="feed">
+
+        <h3>Recent listings</h3>
+
+        <div class="cards">
+
+            {% if posts %}
+
+                {% for post in posts %}
+
+                <a href="/post/{{ post.id }}" class="card">
+
+                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}"
+
+                         onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
+
+                    <div class="card-info">
+
+                        <span class="category">{{ post.category }}</span>
+
+                        <h4>{{ post.title }}</h4>
+
+                        <p class="price">
+
+                            GHS {{ '{:,.2f}'.format(post.price) }}
+
+                            {% if post.promo %}
+
+                            <span class="promo">-{{ post.promo|int }}%</span>
+
+                            {% endif %}
+
+                        </p>
+
+                        <p class="desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
+
+                    </div>
+
+                </a>
+
+                {% endfor %}
+
+            {% else %}
+
+                <p style="color:#999;">No listings yet. Be the first to publish!</p>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+
+
+    <div id="image-modal" class="image-modal" onclick="closeImageModal(event)">
+
+        <div class="image-modal-content">
+
+            <button class="modal-close" onclick="hideImageModal()">×</button>
+
+            <img id="modal-img" src="" alt="Full image">
+
+        </div>
+
+    </div>
+
+
+
+    <script>
+
+    function openImageModal(src) {
+
+        const modal = document.getElementById('image-modal');
+
+        const img = document.getElementById('modal-img');
+
+        img.src = src;
+
+        modal.style.display = 'flex';
+
+    }
+
+
+
+    function hideImageModal() {
+
+        const modal = document.getElementById('image-modal');
+
+        modal.style.display = 'none';
+
+    }
+
+
+
+    function closeImageModal(event) {
+
+        if (event.target.id === 'image-modal') {
+
+            hideImageModal();
+
+        }
+
+    }
+
+    </script>
+
+
+
+</body>
+
+</html>
+
+
+### templates/login.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Login - Vendoor | https://vendoor.com</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <a href="/" class="logo">Vendoor</a>
+
+        <div class="nav-links">
+
+            <a href="/">Home</a>
+
+            <a href="/register" class="btn-signup">Sign up</a>
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="auth-container">
+
+        <div class="auth-box">
+
+            <h2>Log in</h2>
+
+            <p class="auth-sub">Access your Vendoor account</p>
+
+
+
+            {% if error %}
+
+            <div class="alert-error">{{ error }}</div>
+
+            {% endif %}
+
+
+
+            <form method="POST" action="/login">
+
+                <div class="form-group">
+
+                    <label>Email</label>
+
+                    <input type="email" name="email" placeholder="e.g. ismael@email.com" value="{{ request.form.get('email', '') }}" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Password</label>
+
+                    <div class="password-wrapper">
+
+                        <input type="password" id="login_password" name="password" placeholder="Your password" value="{{ request.form.get('password', '') }}" required>
+
+                        <button type="button" class="toggle-password" onclick="togglePassword('login_password')">👁</button>
+
+                    </div>
+
+                </div>
+
+                <button type="submit" class="btn-submit">Connexion</button>
+
+            </form>
+
+
+
+            <p class="auth-footer">No account yet? <a href="/register">Sign up</a></p>
+
+        </div>
+
+    </div>
+
+
+
+<script>
+
+function togglePassword(fieldId) {
+
+    const field = document.getElementById(fieldId);
+
+    field.type = field.type === 'password' ? 'text' : 'password';
+
+}
+
+</script>
+
+</body>
+
+</html>
+
+
+### templates/post_detail.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ post.title }} - Vendoor</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <a href="/" class="logo">Vendoor</a>
+
+        <div class="nav-links">
+
+            <a href="/">Home</a>
+
+            {% if username %}
+
+            <a href="/publish">Publish</a>
+
+            <a href="/posts">Listings</a>
+
+            <a href="/logout" class="btn-login">Logout</a>
+
+            {% else %}
+
+            <a href="/login" class="btn-login">Login</a>
+
+            <a href="/register" class="btn-signup">Sign up</a>
+
+            {% endif %}
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="detail-container">
+
+
+
+        <div class="detail-image-box">
+
+            <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" onerror="this.src='https://placehold.co/600x400'">
+
+        </div>
+
+
+
+        <div class="detail-info-box">
+
+
+
+            <div class="detail-top">
+
+                <span class="category">{{ post.category }}</span>
+
+                <span class="post-type">{{ post.type }}</span>
+
+                {% if post.promo %}
+
+                <span class="promo-badge">-{{ post.promo|int }}%</span>
+
+                {% endif %}
+
+            </div>
+
+
+
+            <h1 class="detail-title">{{ post.title }}</h1>
+
+
+
+            <div class="detail-price-row">
+
+                {% if post.promo %}
+
+                <span class="detail-price-old">GHS {{ '{:,.2f}'.format(post.price) }}</span>
+
+                <span class="detail-price">GHS {{ '{:,.2f}'.format(post.price * (1 - post.promo / 100)) }}</span>
+
+                {% else %}
+
+                <span class="detail-price">GHS {{ '{:,.2f}'.format(post.price) }}</span>
+
+                {% endif %}
+
+            </div>
+
+
+
+            <p class="detail-description">{{ post.description }}</p>
+
+
+
+            <div class="detail-meta">
+
+                <p>📦 <strong>Delivery:</strong> {{ post.delivery_method or 'Not specified' }}</p>
+
+                {% if post.delivery_method == 'pickup' and post.pickup_location %}
+
+                <p>📍 <strong>Pickup location:</strong> {{ post.pickup_location }}</p>
+
+                {% endif %}
+
+                <p>🕒 <strong>Posted:</strong> {{ post.created_at.strftime('%d %b %Y') }}</p>
+
+                <p>👤 <strong>Seller:</strong> {{ seller.username }}</p>
+
+            </div>
+
+
+
+            {% if username and session_user_id != post.user_id %}
+
+            <div class="detail-actions">
+
+                <a href="https://wa.me/{{ seller.phone if seller.phone else '' }}"
+
+                   class="btn-whatsapp" target="_blank">
+
+                    💬 Contact via WhatsApp
+
+                </a>
+
+            </div>
+
+            {% elif not username %}
+
+            <div class="detail-actions">
+
+                <a href="/login" class="btn-submit">Login to contact seller</a>
+
+            </div>
+
+            {% else %}
+
+            <div class="detail-actions">
+
+                <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit listing</a>
+
+            </div>
+
+            {% endif %}
+
+
+
+        </div>
+
+    </div>
+
+
+
+</body>
+
+</html>
+
+
+### templates/posts.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Listings - Vendoor | https://vendoor.com</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <a href="/" class="logo">Vendoor</a>
+
+        <div class="nav-links">
+
+            <a href="/">Home</a>
+
+            {% if username %}
+
+            <a href="/publish">Publish</a>
+
+            <a href="/posts">My listings</a>
+
+            <a href="/logout" class="btn-login">Logout</a>
+
+            {% else %}
+
+            <a href="/login" class="btn-login">Login</a>
+
+            <a href="/register" class="btn-signup">Sign up</a>
+
+            {% endif %}
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="posts-container">
+
+        <h2>All listings</h2>
+
+
+
+        {% if posts %}
+
+        <div class="posts-list">
+
+            {% for post in posts %}
+
+            <div class="post-card">
+
+                <a href="/post/{{ post.id }}" class="post-image-link">
+
+                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" class="post-image" onclick="event.preventDefault(); openImageModal(this.src)" onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
+
+                </a>
+
+                <div class="post-content">
+
+                    <div class="post-header">
+
+                        <a href="/post/{{ post.id }}" class="post-title-link"><h3>{{ post.title }}</h3></a>
+
+                        <span class="post-category">{{ post.category }}</span>
+
+                    </div>
+
+                    <p class="post-description">{{ post.description }}</p>
+
+                    <div class="post-footer">
+
+                        <div class="post-info">
+
+                            <span class="post-price">GHS {{ '{:,.2f}'.format(post.price) }}</span>
+
+                            {% if post.promo %}<span class="promo-badge">-{{ post.promo|int }}%</span>{% endif %}
+
+                            <span class="post-type">{{ post.type }}</span>
+
+                        </div>
+
+                        {% if user_id == post.user_id %}
+
+                        <div class="post-actions">
+
+                            <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit</a>
+
+                            <form method="POST" action="/post/{{ post.id }}/delete" style="display:inline;">
+
+                                <button type="submit" class="btn-delete" onclick="return confirm('Are you sure you want to delete this listing?')">Delete</button>
+
+                            </form>
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <p style="text-align: center; margin-top: 40px; color: #999;">No listings yet.</p>
+
+        {% endif %}
+
+    </div>
+
+
+
+    <div id="image-modal" class="image-modal" onclick="closeImageModal(event)">
+
+        <div class="image-modal-content">
+
+            <button class="modal-close" onclick="hideImageModal()">×</button>
+
+            <img id="modal-img" src="" alt="Full image">
+
+        </div>
+
+    </div>
+
+
+
+<script>
+
+function openImageModal(src) {
+
+    const modal = document.getElementById('image-modal');
+
+    const img = document.getElementById('modal-img');
+
+    img.src = src;
+
+    modal.style.display = 'flex';
+
+}
+
+
+
+function hideImageModal() {
+
+    const modal = document.getElementById('image-modal');
+
+    modal.style.display = 'none';
+
+}
+
+
+
+function closeImageModal(event) {
+
+    if (event.target.id === 'image-modal') {
+
+        hideImageModal();
+
+    }
+
+}
+
+</script>
+
+
+
+</body>
+
+</html>
+
+
+### templates/publish.html
+
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Publier une annonce - Vendoor</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <a href="/" class="logo">Vendoor</a>
+
+        <div class="nav-links">
+
+            <a href="/">Accueil</a>
+
+            <a href="/logout" class="btn-login">Déconnexion</a>
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="auth-container">
+
+        <div class="auth-box">
+
+                <h2>Publish a listing</h2>
+
+                <p class="auth-sub">Create your item or service listing</p>
+
+
+
+            <form method="POST" action="/publish" enctype="multipart/form-data">
+
+                <div class="form-group">
+
+                    <label>Titre de l'annonce</label>
+
+                    <input type="text" name="title" placeholder="ex: Vente de sac à dos" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Description</label>
+
+                    <textarea name="description" placeholder="Décris ton article ou service" rows="5" required></textarea>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Prix</label>
+
+                    <input type="number" step="0.01" name="price" placeholder="ex: 1500" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Catégorie</label>
+
+                    <select name="category" required>
+
+                        <option value="Electronics">Electronics</option>
+
+                        <option value="Clothing">Clothing</option>
+
+                        <option value="Accessories">Accessories</option>
+
+                        <option value="Furniture">Furniture</option>
+
+                        <option value="Service">Service</option>
+
+                        <option value="Other">Other</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Type</label>
+
+                    <select name="type" required>
+
+                        <option value="article">Article</option>
+
+                        <option value="service">Service</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Delivery option</label>
+
+                    <div>
+
+                        <label><input type="radio" name="delivery_method" value="delivery" checked> Delivery</label>
+
+                        <label style="margin-left:12px;"><input type="radio" name="delivery_method" value="pickup"> Pickup</label>
+
+                    </div>
+
+                </div>
+
+                <script>
+
+                // show/hide pickup location based on delivery option
+
+                document.addEventListener('DOMContentLoaded', function(){
+
+                    const radios = document.querySelectorAll('input[name="delivery_method"]');
+
+                    const pickupGroup = document.getElementById('pickup_location_group');
+
+                    if(radios){
+
+                        radios.forEach(r=> r.addEventListener('change', ()=>{
+
+                            if(document.querySelector('input[name="delivery_method"]:checked').value === 'pickup'){
+
+                                pickupGroup.style.display = 'block';
+
+                            } else {
+
+                                pickupGroup.style.display = 'none';
+
+                            }
+
+                        }));
+
+                    }
+
+                });
+
+                </script>
+
+                <div class="form-group" id="pickup_location_group" style="display:none;">
+
+                    <label>Pickup location</label>
+
+                    <input type="text" name="pickup_location" placeholder="Enter pickup location (e.g. campus building)">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Image (URL)</label>
+
+                    <input type="url" name="image" placeholder="Image URL (or leave empty to upload)">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>OU importer une image</label>
+
+                    <input type="file" name="image_file" accept="image/*">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Promotion (%)</label>
+
+                    <input type="number" step="1" name="promo" placeholder="ex: 10" value="0">
+
+                </div>
+
+                <button type="submit" class="btn-submit">Publier</button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+</body>
+
+</html>
+
+
+### templates/register.html
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Register - Vendoor | https://vendoor.com</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+<body>
+
+
+
+    <nav>
+
+        <a href="/" class="logo">Vendoor</a>
+
+        <div class="nav-links">
+
+            <a href="/">Home</a>
+
+            <a href="/login" class="btn-login">Login</a>
+
+        </div>
+
+    </nav>
+
+
+
+    <div class="auth-container">
+
+        <div class="auth-box">
+
+            <h2>Create an account</h2>
+
+            <p class="auth-sub">Join Vendoor and start buying or selling</p>
+
+
+
+            {% if error %}
+
+            <div class="alert-error">{{ error }}</div>
+
+            {% endif %}
+
+
+
+            <form method="POST" action="/register">
+
+                <div class="form-group">
+
+                    <label>Username</label>
+
+                    <input type="text" name="username" placeholder="e.g. ismael23" value="{{ request.form.get('username', '') }}" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Email</label>
+
+                    <input type="email" name="email" placeholder="ex: ismael@email.com" value="{{ request.form.get('email', '') }}" required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Password</label>
+
+                    <div class="password-wrapper">
+
+                        <input type="password" id="password" name="password" placeholder="Minimum 6 characters" value="{{ request.form.get('password', '') }}" required>
+
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')">👁</button>
+
+                    </div>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Confirm password</label>
+
+                    <div class="password-wrapper">
+
+                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat your password" value="{{ request.form.get('confirm_password', '') }}" required>
+
+                        <button type="button" class="toggle-password" onclick="togglePassword('confirm_password')">👁</button>
+
+                    </div>
+
+                </div>
+
+                <div class="form-group checkbox-group">
+
+                    <input type="checkbox" name="terms" id="terms" required>
+
+                    <label for="terms">I accept that Vendoor will collect a 5% commission on each completed transaction</label>
+
+                </div>
+
+                <button type="submit" class="btn-submit">Create account</button>
+
+            </form>
+
+
+
+            <p class="auth-footer">Already have an account? <a href="/login">Log in</a></p>
+
+        </div>
+
+    </div>
+
+
+
+<script>
+
+function togglePassword(fieldId) {
+
+    const field = document.getElementById(fieldId);
+
+    field.type = field.type === 'password' ? 'text' : 'password';
+
+}
+
+</script>
+
+</body>
+
+</html>
+
+
+### tmp_check.py
+
+from app import app, Post
+
+
+
+with app.app_context():
+
+    posts = Post.query.all()
+
+    print('count', len(posts))
+
+    for p in posts:
+
+        print(p.id, p.title, p.image)
+
+
