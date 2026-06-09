@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} - Vendoor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Vendoor</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            {% if username %}
+            <a href="/publish">Publish</a>
+            <a href="/posts">Listings</a>
+            <a href="/my_listings">My listings</a>
+            <a href="/profile">Profile</a>
+            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            <a href="/logout" class="btn-login">Logout</a>
+            {% else %}
+            <a href="/login" class="btn-login">Login</a>
+            <a href="/register" class="btn-signup">Sign up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="detail-container">
+
+        <div class="detail-image-box">
+            <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" onerror="this.src='https://placehold.co/600x400'">
+        </div>
+
+        <div class="detail-info-box">
+
+            <div class="detail-top">
+                <span class="category">{{ post.category }}</span>
+                <span class="post-type">{{ post.type }}</span>
+                {% if post.promo %}
+                <span class="promo-badge">-{{ post.promo|int }}%</span>
+                {% endif %}
+            </div>
+
+            <h1 class="detail-title">{{ post.title }}</h1>
+
+            <div class="detail-price-row">
+                {% if post.promo %}
+                <span class="detail-price-old">GHS {{ '{:,.2f}'.format(post.price) }}</span>
+                <span class="detail-price">GHS {{ '{:,.2f}'.format(post.price * (1 - post.promo / 100)) }}</span>
+                {% else %}
+                <span class="detail-price">GHS {{ '{:,.2f}'.format(post.price) }}</span>
+                {% endif %}
+            </div>
+
+            <p class="detail-description">{{ post.description }}</p>
+
+            <div class="detail-meta">
+                <p>📦 <strong>Delivery:</strong> {{ post.delivery_method or 'Not specified' }}</p>
+                {% if post.delivery_method == 'pickup' and post.pickup_location %}
+                <p>📍 <strong>Pickup location:</strong> {{ post.pickup_location }}</p>
+                {% endif %}
+                <p>🕒 <strong>Posted:</strong> {{ post.created_at.strftime('%d %b %Y') }}</p>
+                <p>👤 <strong>Seller:</strong> {{ seller.username }}</p>
+                <p>📞 <strong>Phone:</strong> {{ seller.phone or 'Not provided' }}</p>
+            </div>
+
+            {% if username and session_user_id != post.user_id %}
+            <div class="detail-actions">
+                <a href="https://wa.me/{{ seller.phone if seller.phone else '' }}" 
+                   class="btn-whatsapp" target="_blank">
+                    💬 Contact via WhatsApp
+                </a>
+            </div>
+            {% elif not username %}
+            <div class="detail-actions">
+                <a href="/login" class="btn-submit">Login to contact seller</a>
+            </div>
+            {% else %}
+            <div class="detail-actions">
+                <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit listing</a>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</body>
+</html>

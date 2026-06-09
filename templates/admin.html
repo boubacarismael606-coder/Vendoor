@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Vendoor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Vendoor</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/posts">Listings</a>
+            <a href="/my_listings">My listings</a>
+            <a href="/publish">Publish</a>
+            <a href="/profile">Profile</a>
+            <a href="/logout" class="btn-login">Logout</a>
+        </div>
+    </nav>
+
+    <div class="feed" style="max-width: 1100px; margin: 40px auto;">
+        <h3>Admin dashboard</h3>
+        <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="card" style="padding: 20px;">
+                <h4>Total users</h4>
+                <p style="font-size: 32px; font-weight: 800; margin-top: 12px;">{{ total_users }}</p>
+            </div>
+            <div class="card" style="padding: 20px;">
+                <h4>Total posts</h4>
+                <p style="font-size: 32px; font-weight: 800; margin-top: 12px;">{{ total_posts }}</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 32px; display: grid; gap: 30px;">
+            <div class="card" style="padding: 20px;">
+                <h4>Recent users</h4>
+                <table style="width:100%; border-collapse: collapse; margin-top: 16px;">
+                    <thead>
+                        <tr style="text-align:left; border-bottom: 1px solid #eee;">
+                            <th style="padding: 10px 0;">Username</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in recent_users %}
+                        <tr style="border-bottom: 1px solid #f4f4f4;">
+                            <td style="padding: 12px 0;">{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.phone or '—' }}</td>
+                            <td>{{ user.role }}</td>
+                            <td>
+                                {% if user.role != 'admin' %}
+                                    {% if user.role == 'banned' %}
+                                    <form method="POST" action="/admin/unban_user/{{ user.id }}" style="display:inline;">
+                                        <button type="submit" class="btn-edit">Unban</button>
+                                    </form>
+                                    {% else %}
+                                    <form method="POST" action="/admin/ban_user/{{ user.id }}" style="display:inline;">
+                                        <button type="submit" class="btn-delete">Ban</button>
+                                    </form>
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card" style="padding: 20px;">
+                <h4>Recent posts</h4>
+                <div style="display: grid; gap: 16px; margin-top: 16px;">
+                    {% for post in recent_posts %}
+                    <div style="display:flex; gap:16px; align-items:center; border:1px solid #f0f0f0; border-radius:12px; padding:12px;">
+                        <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 12px;">
+                        <div style="flex:1; min-width:0;">
+                            <strong>{{ post.title }}</strong>
+                            <div style="font-size: 14px; color: #555;">{{ post.category }} · {{ post.type }}</div>
+                        </div>
+                        <form method="POST" action="/admin/delete_post/{{ post.id }}">
+                            <button type="submit" class="btn-delete">Delete</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

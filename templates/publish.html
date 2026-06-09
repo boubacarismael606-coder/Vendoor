@@ -12,6 +12,10 @@
         <a href="/" class="logo">Vendoor</a>
         <div class="nav-links">
             <a href="/">Accueil</a>
+            <a href="/posts">Listings</a>
+            <a href="/my_listings">My listings</a>
+            <a href="/profile">Profile</a>
+            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
             <a href="/logout" class="btn-login">Déconnexion</a>
         </div>
     </nav>
@@ -20,19 +24,22 @@
         <div class="auth-box">
                 <h2>Publish a listing</h2>
                 <p class="auth-sub">Create your item or service listing</p>
+                {% if error %}
+                    <div class="error-message" style="margin-bottom: 16px; padding: 12px; background:#f8d7da; color:#842029; border-radius:8px;">{{ error }}</div>
+                {% endif %}
 
             <form method="POST" action="/publish" enctype="multipart/form-data">
                 <div class="form-group">
                     <label>Titre de l'annonce</label>
-                    <input type="text" name="title" placeholder="ex: Vente de sac à dos" required>
+                    <input type="text" name="title" placeholder="ex: Vente de sac à dos" value="{{ request.form.title or '' }}" required>
                 </div>
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea name="description" placeholder="Décris ton article ou service" rows="5" required></textarea>
+                    <textarea name="description" placeholder="Décris ton article ou service" rows="5" required>{{ request.form.description or '' }}</textarea>
                 </div>
                 <div class="form-group">
                     <label>Prix</label>
-                    <input type="number" step="0.01" name="price" placeholder="ex: 1500" required>
+                    <input type="number" step="0.01" name="price" placeholder="ex: 1500" value="{{ request.form.price or '' }}" required>
                 </div>
                 <div class="form-group">
                     <label>Catégorie</label>
@@ -48,8 +55,8 @@
                 <div class="form-group">
                     <label>Type</label>
                     <select name="type" required>
-                        <option value="article">Article</option>
-                        <option value="service">Service</option>
+                        <option value="article" {% if request.form.type == 'article' %}selected{% endif %}>Article</option>
+                        <option value="service" {% if request.form.type == 'service' %}selected{% endif %}>Service</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -75,13 +82,13 @@
                     }
                 });
                 </script>
-                <div class="form-group" id="pickup_location_group" style="display:none;">
+                <div class="form-group" id="pickup_location_group" style="{% if request.form.delivery_method == 'pickup' %}display:block;{% else %}display:none;{% endif %}">
                     <label>Pickup location</label>
-                    <input type="text" name="pickup_location" placeholder="Enter pickup location (e.g. campus building)">
+                    <input type="text" name="pickup_location" placeholder="Enter pickup location (e.g. campus building)" value="{{ request.form.pickup_location or '' }}">
                 </div>
                 <div class="form-group">
                     <label>Image (URL)</label>
-                    <input type="url" name="image" placeholder="Image URL (or leave empty to upload)">
+                    <input type="url" name="image" placeholder="Image URL (or leave empty to upload)" value="{{ request.form.image or '' }}">
                 </div>
                 <div class="form-group">
                     <label>OU importer une image</label>
@@ -89,7 +96,7 @@
                 </div>
                 <div class="form-group">
                     <label>Promotion (%)</label>
-                    <input type="number" step="1" name="promo" placeholder="ex: 10" value="0">
+                    <input type="number" step="1" name="promo" placeholder="ex: 10" value="{{ request.form.promo or 0 }}">
                 </div>
                 <button type="submit" class="btn-submit">Publier</button>
             </form>

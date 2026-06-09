@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil - Vendoor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/" class="logo">Vendoor</a>
+        <div class="nav-links">
+            <a href="/">Accueil</a>
+            <a href="/posts">Listings</a>
+            <a href="/my_listings">My listings</a>
+            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            <a href="/logout" class="btn-login">Déconnexion</a>
+        </div>
+    </nav>
+
+    <div class="feed" style="max-width:700px; margin:40px auto;">
+        <div class="card" style="padding:20px;">
+            <h3>Mon profil</h3>
+            <p><strong>Nom d'utilisateur:</strong> {{ user.username }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Téléphone:</strong> {{ user.phone or 'Non renseigné' }}</p>
+            <p><strong>Role:</strong> {{ user.role }}</p>
+
+            <hr style="margin:18px 0;">
+            <h4>Mettre à jour le téléphone</h4>
+            {% if success %}
+                <div class="success" style="padding:10px; background:#d1e7dd; color:#0f5132; border-radius:8px;">{{ success }}</div>
+            {% endif %}
+            <form method="POST" action="/profile" style="margin-top:12px;">
+                <div class="form-group">
+                    <label>Nouveau téléphone</label>
+                    <input type="text" name="phone" value="{{ user.phone or '' }}" placeholder="ex: +233 24 000 0000">
+                </div>
+                <button type="submit" class="btn-submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

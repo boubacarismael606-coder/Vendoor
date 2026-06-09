@@ -3,17 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendoor | https://vendoor.com</title>
+    <title>Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <script>
-        function gotoRegisterIfLoggedOut(username){
-            if(!username){
-                window.location.href = '/login';
-            } else {
-                window.location.href = '/publish';
-            }
-        }
-    </script>
 </head>
 <body>
 
@@ -24,6 +15,9 @@
             {% if username %}
             <a href="/publish">Publish</a>
             <a href="/posts">Listings</a>
+            <a href="/my_listings">My listings</a>
+            <a href="/profile">Profile</a>
+            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
             <a href="/logout" class="btn-login">Logout</a>
             {% else %}
             <a href="/login" class="btn-login">Login</a>
@@ -46,25 +40,24 @@
         <div class="cards">
             {% if posts %}
                 {% for post in posts %}
-                <div class="card">
-                    <img src="{{ post.image }}" alt="{{ post.title }}" onclick="openImageModal(this.src)" onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
+                <a href="/post/{{ post.id }}" class="card">
+                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" 
+                         onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
                     <div class="card-info">
                         <span class="category">{{ post.category }}</span>
                         <h4>{{ post.title }}</h4>
-                        <p class="price">GHS {{ '{:,.2f}'.format(post.price) }}{% if post.promo %} <span class="promo">-{{ post.promo|int }}%</span>{% endif %}</p>
+                        <p class="price">
+                            GHS {{ '{:,.2f}'.format(post.price) }}
+                            {% if post.promo %}
+                            <span class="promo">-{{ post.promo|int }}%</span>
+                            {% endif %}
+                        </p>
                         <p class="desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
                     </div>
-                </div>
+                </a>
                 {% endfor %}
             {% else %}
-                <div class="card">
-                    <img src="https://placehold.co/300x200" alt="placeholder">
-                    <div class="card-info">
-                        <span class="category">Electronics</span>
-                        <h4>iPhone 13 Pro</h4>
-                        <p class="price">GHS 450,000.00</p>
-                    </div>
-                </div>
+                <p style="color:#999;">No listings yet. Be the first to publish!</p>
             {% endif %}
         </div>
     </div>

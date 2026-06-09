@@ -109,8 +109,9 @@ nav {
 
 .card img {
     width: 100%;
-    height: 180px;
+    height: 160px;
     object-fit: cover;
+    object-position: center;
 }
 
 .card-info {
@@ -335,8 +336,8 @@ nav {
 }
 
 .post-image {
-    width: 280px;
-    height: 220px;
+    width: 220px;
+    height: 160px;
     object-fit: cover;
     flex-shrink: 0;
 }
@@ -360,6 +361,16 @@ nav {
     font-size: 20px;
     margin: 0;
     flex: 1;
+}
+
+.post-image-link,
+.post-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.post-image-link {
+    display: block;
 }
 
 .post-category {
@@ -515,4 +526,114 @@ nav {
 
 .modal-back:hover {
     background: #c1121f;
+}
+/* DETAIL PAGE */
+
+.detail-container {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.detail-image-box img {
+    width: 100%;
+    border-radius: 16px;
+    object-fit: cover;
+    max-height: 450px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.detail-info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-top {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.detail-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #222;
+}
+
+.detail-price-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.detail-price {
+    font-size: 26px;
+    font-weight: 800;
+    color: #e63946;
+}
+
+.detail-price-old {
+    font-size: 18px;
+    color: #aaa;
+    text-decoration: line-through;
+}
+
+.detail-description {
+    color: #555;
+    font-size: 15px;
+    line-height: 1.7;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 16px;
+}
+
+.detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #f9f9f9;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #444;
+}
+
+.detail-actions {
+    margin-top: 8px;
+}
+
+.btn-whatsapp {
+    display: inline-block;
+    background: #25d366;
+    color: white;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.btn-whatsapp:hover {
+    background: #1da851;
+}
+
+@media (max-width: 768px) {
+    .detail-container {
+        grid-template-columns: 1fr;
+    }
+}
+a.card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+a.post-card {
+    display: flex;
+    text-decoration: none;
+    color: inherit;
 }
