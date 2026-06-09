@@ -36,7 +36,7 @@
     </div>
 
     <div class="feed">
-        <h3>Recent listings</h3>
+        <h3 style="font-size:22px; font-weight:800; margin-bottom:20px;">Recent listings</h3>
         <div class="cards">
             {% if posts %}
                 {% for post in posts %}
@@ -52,7 +52,7 @@
                             <span class="promo">-{{ post.promo|int }}%</span>
                             {% endif %}
                         </p>
-                        <p class="desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
+                        <p class="card-desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
                     </div>
                 </a>
                 {% endfor %}

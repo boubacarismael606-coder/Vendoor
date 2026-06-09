@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Listings - Vendoor | https://vendoor.com</title>
+    <title>Listings - Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -26,74 +26,41 @@
         </div>
     </nav>
 
-    <div class="posts-container">
-        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-bottom:24px; gap:16px;">
-            <h2 style="margin:0;">All listings</h2>
-            <form method="GET" action="/posts" style="flex:1; max-width:420px; display:flex; gap:8px;">
-                <input type="search" name="q" value="{{ search_query or '' }}" placeholder="Search listings by title, description or category" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
-                <button type="submit" class="btn-submit" style="padding: 10px 16px;">Search</button>
+    <div class="feed">
+        <div class="page-header">
+            <div>
+                <h2>All listings</h2>
+                <p class="page-subtitle">Browse items and services from the campus community</p>
+            </div>
+            <form method="GET" action="/posts" class="search-bar">
+                <input type="search" name="q" value="{{ search_query or '' }}" placeholder="Search by title, category...">
+                <button type="submit" class="btn-submit">Search</button>
             </form>
         </div>
 
         {% if posts %}
-        <div class="posts-list">
+        <div class="cards">
             {% for post in posts %}
-            <div class="post-card">
-                <a href="/post/{{ post.id }}" class="post-image-link">
-                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" class="post-image" onclick="event.preventDefault(); openImageModal(this.src)" onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
-                </a>
-                <div class="post-content">
-                    <div class="post-header">
-                        <a href="/post/{{ post.id }}" class="post-title-link"><h3>{{ post.title }}</h3></a>
-                        <span class="post-category">{{ post.category }}</span>
-                    </div>
-                    <div style="font-size:13px; color:#666; margin-bottom:8px;">
-                        <strong>Seller:</strong> {{ post.user.username if post.user else '—' }}
-                        {% if post.user and post.user.phone %}· 📞 {{ post.user.phone }}{% endif %}
-                    </div>
-                    <p class="post-description">{{ post.description }}</p>
-                    <div class="post-footer">
-                        <div class="post-info">
-                            <span class="post-price">GHS {{ '{:,.2f}'.format(post.price) }}</span>
-                            {% if post.promo %}<span class="promo-badge">-{{ post.promo|int }}%</span>{% endif %}
-                            <span class="post-type">{{ post.type }}</span>
-                        </div>
-                    </div>
+            <a href="/post/{{ post.id }}" class="card">
+                <img src="{{ image_url(post.image) }}" alt="{{ post.title }}"
+                     onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
+                <div class="card-info">
+                    <span class="category">{{ post.category }}</span>
+                    <h4>{{ post.title }}</h4>
+                    <p class="card-seller">by {{ post.user.username if post.user else 'Unknown' }}</p>
+                    <p class="price">
+                        GHS {{ '{:,.2f}'.format(post.price) }}
+                        {% if post.promo %}<span class="promo">-{{ post.promo|int }}%</span>{% endif %}
+                    </p>
+                    <p class="card-desc">{{ post.description[:90] }}{% if post.description|length > 90 %}...{% endif %}</p>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
         {% else %}
-        <p style="text-align: center; margin-top: 40px; color: #999;">No listings yet.</p>
+        <p class="empty-state">No listings found. Try another search or publish the first one!</p>
         {% endif %}
     </div>
-
-    <div id="image-modal" class="image-modal" onclick="closeImageModal(event)">
-        <div class="image-modal-content">
-            <button class="modal-close" onclick="hideImageModal()">×</button>
-            <img id="modal-img" src="" alt="Full image">
-        </div>
-    </div>
-
-<script>
-function openImageModal(src) {
-    const modal = document.getElementById('image-modal');
-    const img = document.getElementById('modal-img');
-    img.src = src;
-    modal.style.display = 'flex';
-}
-
-function hideImageModal() {
-    const modal = document.getElementById('image-modal');
-    modal.style.display = 'none';
-}
-
-function closeImageModal(event) {
-    if (event.target.id === 'image-modal') {
-        hideImageModal();
-    }
-}
-</script>
 
 </body>
 </html>
