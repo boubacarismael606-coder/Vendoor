@@ -365,19 +365,28 @@ def seed_production_data():
 
     users_by_email = {}
     for entry in SEED_USERS:
+        if entry.get('password_hash'):
+            password = entry['password_hash']
+        else:
+            password = bcrypt.generate_password_hash(entry['password']).decode('utf-8')
+
         user = User.query.filter_by(email=entry['email']).first()
         if not user:
             user = User(
                 username=entry['username'],
                 email=entry['email'],
-                password=bcrypt.generate_password_hash(entry['password']).decode('utf-8'),
+                password=password,
                 phone=entry.get('phone') or None,
                 role=entry.get('role', 'user'),
             )
             db.session.add(user)
             db.session.flush()
-        elif entry.get('phone') and not user.phone:
-            user.phone = entry['phone']
+        else:
+            user.username = entry['username']
+            user.password = password
+            user.role = entry.get('role', user.role)
+            if entry.get('phone'):
+                user.phone = entry['phone']
         users_by_email[entry['email']] = user
 
     db.session.commit()
