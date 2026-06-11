@@ -1,44 +1,83 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profil - Vendoor</title>
+    <title>My Profile - Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+
     <nav>
         <a href="/" class="logo">Vendoor</a>
         <div class="nav-links">
-            <a href="/">Accueil</a>
+            <a href="/">Home</a>
+            <a href="/publish">Publish</a>
             <a href="/posts">Listings</a>
             <a href="/my_listings">My listings</a>
-            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
-            <a href="/logout" class="btn-login">Déconnexion</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="btn-signup">Admin</a>
+            {% endif %}
+            <a href="/logout" class="btn-login">Logout</a>
         </div>
     </nav>
 
-    <div class="feed" style="max-width:700px; margin:40px auto;">
-        <div class="card" style="padding:20px;">
-            <h3>Mon profil</h3>
-            <p><strong>Nom d'utilisateur:</strong> {{ user.username }}</p>
-            <p><strong>Email:</strong> {{ user.email }}</p>
-            <p><strong>Téléphone:</strong> {{ user.phone or 'Non renseigné' }}</p>
-            <p><strong>Role:</strong> {{ user.role }}</p>
+    <div class="profile-container">
 
-            <hr style="margin:18px 0;">
-            <h4>Mettre à jour le téléphone</h4>
+        <div class="profile-card">
+            <div class="profile-avatar">
+                {{ user.username[0].upper() }}
+            </div>
+            <h2 class="profile-username">{{ user.username }}</h2>
+            <span class="profile-role {{ 'role-admin' if user.role == 'admin' else 'role-user' }}">
+                {{ user.role }}
+            </span>
+        </div>
+
+        <div class="profile-info-card">
+            <h3>Account information</h3>
+            <div class="profile-info-row">
+                <span class="profile-info-label">👤 Username</span>
+                <span class="profile-info-value">{{ user.username }}</span>
+            </div>
+            <div class="profile-info-row">
+                <span class="profile-info-label">📧 Email</span>
+                <span class="profile-info-value">{{ user.email }}</span>
+            </div>
+            <div class="profile-info-row">
+                <span class="profile-info-label">📱 Phone</span>
+                <span class="profile-info-value">{{ user.phone if user.phone else 'Not set' }}</span>
+            </div>
+            <div class="profile-info-row">
+                <span class="profile-info-label">🗓 Member since</span>
+                <span class="profile-info-value">{{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}</span>
+            </div>
+        </div>
+
+        <div class="profile-edit-card">
+            <h3>Update phone number</h3>
+            <p class="profile-edit-sub">Your phone number is used for WhatsApp contact on your listings.</p>
+
             {% if success %}
-                <div class="success" style="padding:10px; background:#d1e7dd; color:#0f5132; border-radius:8px;">{{ success }}</div>
+            <div class="alert-success">{{ success }}</div>
             {% endif %}
-            <form method="POST" action="/profile" style="margin-top:12px;">
+
+            <form method="POST" action="/profile">
                 <div class="form-group">
-                    <label>Nouveau téléphone</label>
-                    <input type="text" name="phone" value="{{ user.phone or '' }}" placeholder="ex: +233 24 000 0000">
+                    <label>Phone number (with country code)</label>
+                    <input type="text" name="phone" value="{{ user.phone or '' }}" placeholder="e.g. 233241234567">
                 </div>
-                <button type="submit" class="btn-submit">Enregistrer</button>
+                <button type="submit" class="btn-submit">Save changes</button>
             </form>
         </div>
+
+        <div class="profile-listings-card">
+            <h3>My listings</h3>
+            <p class="profile-edit-sub">{{ user.posts|length }} listing{{ 's' if user.posts|length != 1 else '' }} published</p>
+            <a href="/my_listings" class="btn-main" style="display:inline-block; margin-top:12px;">View my listings</a>
+        </div>
+
     </div>
+
 </body>
 </html>
