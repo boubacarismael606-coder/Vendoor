@@ -67,8 +67,10 @@
 
             {% if username and session_user_id != post.user_id %}
             <div class="detail-actions">
-                <a href="https://wa.me/{{ seller.phone if seller.phone else '' }}" 
-                   class="btn-whatsapp" target="_blank">
+                {% if not seller.phone %}
+                <p style="color:#888; font-size:13px; margin-bottom:8px;">⚠️ Seller hasn't added a phone number yet.</p>
+                {% endif %}
+                <a href="{% if seller.phone %}https://wa.me/{{ seller.phone }}{% else %}/login{% endif %}"
                     💬 Contact via WhatsApp
                 </a>
             </div>

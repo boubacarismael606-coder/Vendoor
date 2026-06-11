@@ -17,7 +17,9 @@
             <a href="/posts">Listings</a>
             <a href="/my_listings">My listings</a>
             <a href="/profile">Profile</a>
-            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="btn-signup">Admin</a>
+            {% endif %}
             <a href="/logout" class="btn-login">Logout</a>
             {% else %}
             <a href="/login" class="btn-login">Login</a>
@@ -32,16 +34,39 @@
         {% if username %}
         <p class="hero-sub">Welcome, {{ username }}!</p>
         {% endif %}
-        <a href="{% if username %}/publish{% else %}/login{% endif %}" class="btn-main">Get started</a>
+        <a href="{% if username %}/publish{% else %}/register{% endif %}" class="btn-main">Get started</a>
     </div>
 
     <div class="feed">
-        <h3 style="font-size:22px; font-weight:800; margin-bottom:20px;">Recent listings</h3>
+
+        <div class="search-bar-wrapper">
+            <form method="GET" action="/" class="search-form">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Search listings...">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+
+        <div class="category-filters">
+            <a href="/" class="{{ 'active' if not category_filter else '' }}">All</a>
+            {% for cat in categories %}
+            <a href="/?category={{ cat }}{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="{{ 'active' if category_filter == cat else '' }}">{{ cat }}</a>
+            {% endfor %}
+        </div>
+
+        {% if search_query or category_filter %}
+        <p class="search-results-info">
+            {{ posts|length }} result{{ 's' if posts|length != 1 else '' }}
+            {% if search_query %}for "<strong>{{ search_query }}</strong>"{% endif %}
+            {% if category_filter %}in <strong>{{ category_filter }}</strong>{% endif %}
+        </p>
+        {% endif %}
+
         <div class="cards">
             {% if posts %}
                 {% for post in posts %}
                 <a href="/post/{{ post.id }}" class="card">
-                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" 
+                    <img src="{{ image_url(post.image) }}" alt="{{ post.title }}"
                          onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
                     <div class="card-info">
                         <span class="category">{{ post.category }}</span>
@@ -52,42 +77,17 @@
                             <span class="promo">-{{ post.promo|int }}%</span>
                             {% endif %}
                         </p>
-                        <p class="card-desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
+                        <p class="desc">{{ post.description[:80] }}{% if post.description|length > 80 %}...{% endif %}</p>
                     </div>
                 </a>
                 {% endfor %}
             {% else %}
-                <p style="color:#999;">No listings yet. Be the first to publish!</p>
+                <p style="color:#999; grid-column: 1/-1; text-align:center; padding: 40px 0;">
+                    No listings found. <a href="/" style="color:#e63946;">Clear filters</a>
+                </p>
             {% endif %}
         </div>
     </div>
-
-    <div id="image-modal" class="image-modal" onclick="closeImageModal(event)">
-        <div class="image-modal-content">
-            <button class="modal-close" onclick="hideImageModal()">×</button>
-            <img id="modal-img" src="" alt="Full image">
-        </div>
-    </div>
-
-    <script>
-    function openImageModal(src) {
-        const modal = document.getElementById('image-modal');
-        const img = document.getElementById('modal-img');
-        img.src = src;
-        modal.style.display = 'flex';
-    }
-
-    function hideImageModal() {
-        const modal = document.getElementById('image-modal');
-        modal.style.display = 'none';
-    }
-
-    function closeImageModal(event) {
-        if (event.target.id === 'image-modal') {
-            hideImageModal();
-        }
-    }
-    </script>
 
 </body>
 </html>

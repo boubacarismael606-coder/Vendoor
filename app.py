@@ -69,8 +69,33 @@ class Transaction(db.Model):
 @app.route('/')
 def home():
     username = session.get('username')
-    posts = Post.query.order_by(Post.created_at.desc()).all()
-    return render_template('home.html', username=username, posts=posts)
+    search_query = request.args.get('q', '').strip()
+    category_filter = request.args.get('category', '').strip()
+
+    posts_query = Post.query
+
+    if search_query:
+        search_pattern = f"%{search_query.lower()}%"
+        posts_query = posts_query.filter(
+            func.lower(Post.title).like(search_pattern) |
+            func.lower(Post.description).like(search_pattern) |
+            func.lower(Post.category).like(search_pattern)
+        )
+
+    if category_filter:
+        posts_query = posts_query.filter(Post.category == category_filter)
+
+    posts = posts_query.order_by(Post.created_at.desc()).all()
+
+    categories = ['Electronics', 'Clothing', 'Accessories', 'Furniture', 'Food & Drinks', 'Service', 'Delivery', 'Other']
+
+    return render_template('home.html',
+        username=username,
+        posts=posts,
+        search_query=search_query,
+        category_filter=category_filter,
+        categories=categories
+    )
 
 @app.route('/publish', methods=['GET', 'POST'])
 def publish():
