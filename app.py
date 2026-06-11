@@ -9,25 +9,12 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vendoor-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vendoor.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///vendoor.db')
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
-
-def ensure_db_schema():
-    with db.engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info('user')"))
-        existing_cols = [row['name'] for row in result.mappings()]
-        if not existing_cols:
-            return
-        if 'phone' not in existing_cols:
-            conn.execute(text("ALTER TABLE user ADD COLUMN phone VARCHAR(20) DEFAULT ''"))
-        if 'role' not in existing_cols:
-            conn.execute(text("ALTER TABLE user ADD COLUMN role VARCHAR(10) DEFAULT 'user'"))
-        if 'created_at' not in existing_cols:
-            conn.execute(text("ALTER TABLE user ADD COLUMN created_at DATETIME"))
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -113,7 +100,7 @@ def publish():
                 image_file.save(filepath)
                 image = f'images/{filename}'
             else:
-                error = "Format d'image non supporté. Utilise png, jpg, jpeg, gif, webp ou jfif."
+                error = "Format non supporté. Utilise png, jpg, jpeg, gif, webp ou jfif."
                 return render_template('publish.html', error=error)
 
         if not image:
@@ -159,9 +146,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
-    session.pop('username', None)
-    session.pop('role', None)
+    session.clear()
     return redirect(url_for('home'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -174,19 +159,19 @@ def register():
         phone = request.form.get('phone', '').strip()
 
         if 'terms' not in request.form:
-            return render_template('register.html', error="Vous devez accepter les conditions et la commission de 5%.")
+            return render_template('register.html', error="You must accept the 5% commission terms.")
 
         if len(password) < 6:
-            return render_template('register.html', error="Le mot de passe doit contenir au moins 6 caractères.")
+            return render_template('register.html', error="Password must be at least 6 characters.")
 
         if password != confirm:
-            return render_template('register.html', error="Les mots de passe ne correspondent pas.")
+            return render_template('register.html', error="Passwords do not match.")
 
         if User.query.filter_by(email=email).first():
-            return render_template('register.html', error="Cet email est déjà utilisé.")
+            return render_template('register.html', error="This email is already used.")
 
         if User.query.filter_by(username=username).first():
-            return render_template('register.html', error="Ce nom d'utilisateur est déjà pris.")
+            return render_template('register.html', error="This username is already taken.")
 
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         new_user = User(username=username, email=email, password=hashed_pw, phone=phone)
@@ -211,7 +196,7 @@ def profile():
         phone = request.form.get('phone', '').strip()
         user.phone = phone
         db.session.commit()
-        return render_template('profile.html', user=user, success="Profil mis à jour ✅")
+        return render_template('profile.html', user=user, success="Profile updated ✅")
 
     return render_template('profile.html', user=user)
 
@@ -263,7 +248,7 @@ def edit_post(post_id):
 
     post = Post.query.get_or_404(post_id)
 
-    if post.user_id != session['user_id']:
+    if post.user_id != session['user_id'] and session.get('role') != 'admin':
         return redirect(url_for('posts_list'))
 
     if request.method == 'POST':
@@ -298,7 +283,7 @@ def delete_post(post_id):
 
     post = Post.query.get_or_404(post_id)
 
-    if post.user_id != session['user_id']:
+    if post.user_id != session['user_id'] and session.get('role') != 'admin':
         return redirect(url_for('posts_list'))
 
     db.session.delete(post)
@@ -360,68 +345,24 @@ def admin_unban_user(user_id):
 
 # --- LANCEMENT ---
 
-def seed_production_data():
-    from seed_data import SEED_USERS, SEED_POSTS
-
-    users_by_email = {}
-    for entry in SEED_USERS:
-        if entry.get('password_hash'):
-            password = entry['password_hash']
-        else:
-            password = bcrypt.generate_password_hash(entry['password']).decode('utf-8')
-
-        user = User.query.filter_by(email=entry['email']).first()
-        if not user:
-            user = User(
-                username=entry['username'],
-                email=entry['email'],
-                password=password,
-                phone=entry.get('phone') or None,
-                role=entry.get('role', 'user'),
-            )
-            db.session.add(user)
-            db.session.flush()
-        else:
-            user.username = entry['username']
-            user.password = password
-            user.role = entry.get('role', user.role)
-            if entry.get('phone'):
-                user.phone = entry['phone']
-        users_by_email[entry['email']] = user
-
-    db.session.commit()
-
-    for entry in SEED_POSTS:
-        owner = users_by_email.get(entry['user_email'])
-        if not owner:
-            owner = User.query.filter_by(email=entry['user_email']).first()
-        if not owner:
-            continue
-
-        existing = Post.query.filter_by(user_id=owner.id, title=entry['title']).first()
-        if existing:
-            continue
-
-        db.session.add(Post(
-            title=entry['title'],
-            description=entry['description'],
-            price=entry['price'],
-            category=entry['category'],
-            type=entry['type'],
-            image=entry['image'],
-            promo=entry.get('promo', 0),
-            delivery_method=entry.get('delivery_method'),
-            pickup_location=entry.get('pickup_location') or None,
-            user_id=owner.id,
-        ))
-
-    db.session.commit()
-
 def init_db():
     with app.app_context():
         db.create_all()
-        ensure_db_schema()
-        seed_production_data()
+
+        # Crée seulement le compte admin s'il n'existe pas
+        admin = User.query.filter_by(email='admin@vendoor.com').first()
+        if not admin:
+            admin = User(
+                username='admin',
+                email='admin@vendoor.com',
+                password=bcrypt.generate_password_hash('admin123').decode('utf-8'),
+                role='admin'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin créé ✅")
+
+        print("Base de données prête ✅")
 
 init_db()
 
