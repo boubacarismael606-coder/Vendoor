@@ -342,7 +342,54 @@ def admin_unban_user(user_id):
     user.role = 'user'
     db.session.commit()
     return redirect(url_for('admin_dashboard'))
+import json
+from flask import Response
 
+@app.route('/admin/export')
+@admin_required
+def admin_export():
+    users = User.query.all()
+    posts = Post.query.all()
+
+    data = {
+        'exported_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+        'users': [
+            {
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'phone': u.phone or '',
+                'role': u.role,
+                'created_at': u.created_at.strftime('%Y-%m-%d %H:%M:%S') if u.created_at else ''
+            }
+            for u in users
+        ],
+        'posts': [
+            {
+                'id': p.id,
+                'title': p.title,
+                'description': p.description,
+                'price': p.price,
+                'category': p.category,
+                'type': p.type,
+                'image': p.image,
+                'promo': p.promo,
+                'delivery_method': p.delivery_method or '',
+                'pickup_location': p.pickup_location or '',
+                'user_id': p.user_id,
+                'created_at': p.created_at.strftime('%Y-%m-%d %H:%M:%S') if p.created_at else ''
+            }
+            for p in posts
+        ]
+    }
+
+    filename = f"vendoor_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+
+    return Response(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 # --- LANCEMENT ---
 
 def init_db():

@@ -1171,3 +1171,24 @@ a.post-card {
         flex-wrap: wrap;
     }
 }
+.admin-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.btn-export {
+    display: inline-block;
+    background: #2a9d8f;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.btn-export:hover {
+    background: #1d7a6e;
+}
