@@ -1,23 +1,37 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, Response
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, text
+from sqlalchemy import func
 from flask_bcrypt import Bcrypt
 from datetime import datetime
 import os
-import uuid
-from werkzeug.utils import secure_filename
+import json
+import cloudinary
+import cloudinary.uploader
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vendoor-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///vendoor.db')
-app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET')
+)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'jfif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def upload_to_cloudinary(file):
+    try:
+        result = cloudinary.uploader.upload(file, folder='vendoor')
+        return result.get('secure_url')
+    except Exception as e:
+        print(f"Cloudinary upload error: {e}")
+        return None
 
 @app.context_processor
 def utility_processor():
@@ -47,7 +61,7 @@ class Post(db.Model):
     price = db.Column(db.Float, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     type = db.Column(db.String(10), nullable=False)
-    image = db.Column(db.String(200), nullable=False)
+    image = db.Column(db.String(500), nullable=False)
     promo = db.Column(db.Float, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     delivery_method = db.Column(db.String(20), nullable=True)
@@ -86,7 +100,6 @@ def home():
         posts_query = posts_query.filter(Post.category == category_filter)
 
     posts = posts_query.order_by(Post.created_at.desc()).all()
-
     categories = ['Electronics', 'Clothing', 'Accessories', 'Furniture', 'Food & Drinks', 'Service', 'Delivery', 'Other']
 
     return render_template('home.html',
@@ -118,14 +131,14 @@ def publish():
         image_file = request.files.get('image_file')
         if image_file and image_file.filename:
             if allowed_file(image_file.filename):
-                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                ext = image_file.filename.rsplit('.', 1)[1].lower()
-                filename = f"{uuid.uuid4().hex}.{ext}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                image_file.save(filepath)
-                image = f'images/{filename}'
+                cloudinary_url = upload_to_cloudinary(image_file)
+                if cloudinary_url:
+                    image = cloudinary_url
+                else:
+                    error = "Image upload failed. Please try again."
+                    return render_template('publish.html', error=error)
             else:
-                error = "Format non supporté. Utilise png, jpg, jpeg, gif, webp ou jfif."
+                error = "Unsupported format. Please use png, jpg, jpeg, gif, webp or jfif."
                 return render_template('publish.html', error=error)
 
         if not image:
@@ -157,10 +170,10 @@ def login():
         user = User.query.filter(func.lower(User.email) == email).first()
 
         if not user or not bcrypt.check_password_hash(user.password, password):
-            return render_template('login.html', error="Email ou mot de passe invalide.")
+            return render_template('login.html', error="Email or password is incorrect.")
 
         if user.role == 'banned':
-            return render_template('login.html', error="Votre compte a été bloqué. Contactez l'administrateur.")
+            return render_template('login.html', error="Your account has been banned. Contact admin.")
 
         session['user_id'] = user.id
         session['username'] = user.username
@@ -289,12 +302,9 @@ def edit_post(post_id):
         image_file = request.files.get('image_file')
         if image_file and image_file.filename:
             if allowed_file(image_file.filename):
-                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                ext = image_file.filename.rsplit('.', 1)[1].lower()
-                filename = f"{uuid.uuid4().hex}.{ext}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                image_file.save(filepath)
-                post.image = f'images/{filename}'
+                cloudinary_url = upload_to_cloudinary(image_file)
+                if cloudinary_url:
+                    post.image = cloudinary_url
 
         db.session.commit()
         return redirect(url_for('posts_list'))
@@ -367,8 +377,6 @@ def admin_unban_user(user_id):
     user.role = 'user'
     db.session.commit()
     return redirect(url_for('admin_dashboard'))
-import json
-from flask import Response
 
 @app.route('/admin/export')
 @admin_required
@@ -415,13 +423,12 @@ def admin_export():
         mimetype='application/json',
         headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
+
 # --- LANCEMENT ---
 
 def init_db():
     with app.app_context():
         db.create_all()
-
-        # Crée seulement le compte admin s'il n'existe pas
         admin = User.query.filter_by(email='admin@vendoor.com').first()
         if not admin:
             admin = User(
@@ -433,7 +440,6 @@ def init_db():
             db.session.add(admin)
             db.session.commit()
             print("Admin créé ✅")
-
         print("Base de données prête ✅")
 
 init_db()
