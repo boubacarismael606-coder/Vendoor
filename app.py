@@ -7,6 +7,7 @@ import os
 import json
 import cloudinary
 import cloudinary.uploader
+from sqlalchemy import func, text
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vendoor-secret-key')
@@ -435,6 +436,23 @@ def admin_export():
 def init_db():
     with app.app_context():
         db.create_all()
+
+        # Ajouter les colonnes manquantes si elles n'existent pas
+        with db.engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE post ADD COLUMN location VARCHAR(120)"))
+                conn.commit()
+                print("Colonne location ajoutée ✅")
+            except Exception:
+                conn.rollback()
+
+            try:
+                conn.execute(text("ALTER TABLE post ADD COLUMN whatsapp VARCHAR(30)"))
+                conn.commit()
+                print("Colonne whatsapp ajoutée ✅")
+            except Exception:
+                conn.rollback()
+
         admin = User.query.filter_by(email='admin@vendoor.com').first()
         if not admin:
             admin = User(
@@ -446,8 +464,8 @@ def init_db():
             db.session.add(admin)
             db.session.commit()
             print("Admin créé ✅")
-        print("Base de données prête ✅")
 
+        print("Base de données prête ✅")
 init_db()
 
 if __name__ == '__main__':
