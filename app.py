@@ -68,6 +68,8 @@ class Post(db.Model):
     pickup_location = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', backref=db.backref('posts', lazy=True))
+    location = db.Column(db.String(120), nullable=True)
+    whatsapp = db.Column(db.String(30), nullable=True)
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -125,6 +127,8 @@ def publish():
         post_type = request.form['type']
         delivery_method = request.form.get('delivery_method', 'delivery')
         pickup_location = request.form.get('pickup_location', '').strip()
+        location = request.form.get('location', '').strip()
+        whatsapp = request.form.get('whatsapp', '').strip()
         image = request.form.get('image', '').strip()
         promo = float(request.form.get('promo', 0) or 0)
 
@@ -154,6 +158,8 @@ def publish():
             promo=promo,
             delivery_method=delivery_method,
             pickup_location=pickup_location,
+            location=location,
+            whatsapp=whatsapp,
             user_id=session['user_id']
         )
         db.session.add(new_post)
