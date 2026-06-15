@@ -8,11 +8,19 @@
 </head>
 <body>
 
-    <nav>
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+
+        <form method="GET" action="/" class="nav-search-form">
+            <input type="text" name="q" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/posts">Listings</a>
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ username }}</a>
             <a href="/admin" class="btn-signup">Admin</a>
             <a href="/logout" class="btn-login">Logout</a>
         </div>
@@ -24,9 +32,11 @@
             <h1>Admin Dashboard</h1>
             <p>Welcome back, {{ username }} — here's what's happening on Vendoor.</p>
         </div>
+
         <div class="admin-actions">
             <a href="/admin/export" class="btn-export">⬇ Export backup</a>
-            </div>
+        </div>
+
         <div class="admin-stats">
             <div class="stat-card">
                 <div class="stat-icon">👥</div>
@@ -39,7 +49,7 @@
                 <div class="stat-icon">📦</div>
                 <div class="stat-info">
                     <span class="stat-number">{{ total_posts }}</span>
-                    <span class="stat-label">Total listings</span>
+                    <span class="stat-label">Total posts</span>
                 </div>
             </div>
         </div>
@@ -91,7 +101,7 @@
         </div>
 
         <div class="admin-section">
-            <h2>Recent listings</h2>
+            <h2>Recent posts</h2>
             <div class="admin-posts-list">
                 {% for post in recent_posts %}
                 <div class="admin-post-row">
@@ -102,7 +112,7 @@
                         <span class="admin-post-seller">by {{ post.user.username if post.user else '—' }}</span>
                     </div>
                     <form method="POST" action="/admin/delete_post/{{ post.id }}" style="display:inline;">
-                        <button type="submit" class="btn-ban" onclick="return confirm('Delete this listing?')">Delete</button>
+                        <button type="submit" class="btn-ban" onclick="return confirm('Delete this post?')">Delete</button>
                     </form>
                 </div>
                 {% endfor %}

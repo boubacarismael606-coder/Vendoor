@@ -3,24 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Publish Listing - Vendoor</title>
+    <title>New Post - Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
-    <nav>
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
 
+        <form method="GET" action="/" class="nav-search-form">
+            <input type="text" name="q" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/posts">Listings</a>
-            <a href="/my_listings">My Listings</a>
-            <a href="/profile">Profile</a>
-
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ session.get('username') }}</a>
             {% if session.get('role') == 'admin' %}
-                <a href="/admin" class="btn-signup">Admin</a>
+            <a href="/admin" class="btn-signup">Admin</a>
             {% endif %}
-
             <a href="/logout" class="btn-login">Logout</a>
         </div>
     </nav>
@@ -28,8 +31,8 @@
     <div class="auth-container">
         <div class="auth-box">
 
-            <h2>Publish a Listing</h2>
-            <p class="auth-sub">Create your product or service listing</p>
+            <h2>New Post</h2>
+            <p class="auth-sub">Sell a product or offer a service to the Vendoor community</p>
 
             {% if error %}
                 <div class="error-message"
@@ -43,7 +46,7 @@
                   enctype="multipart/form-data">
 
                 <div class="form-group">
-                    <label>Listing Title</label>
+                    <label>What are you selling?</label>
                     <input
                         type="text"
                         name="title"
@@ -62,12 +65,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Price</label>
+                    <label>Price (GHS)</label>
                     <input
                         type="number"
                         step="0.01"
                         name="price"
-                        placeholder="e.g. 1500"
+                        placeholder="e.g. 150"
                         value="{{ request.form.price or '' }}"
                         required>
                 </div>
@@ -80,7 +83,9 @@
                         <option value="Clothing">Clothing</option>
                         <option value="Accessories">Accessories</option>
                         <option value="Furniture">Furniture</option>
+                        <option value="Food & Drinks">Food & Drinks</option>
                         <option value="Service">Service</option>
+                        <option value="Delivery">Delivery</option>
                         <option value="Other">Other</option>
                     </select>
                 </div>
@@ -89,48 +94,48 @@
                     <label>Type</label>
 
                     <select name="type" required>
-
                         <option value="article"
-                            {% if request.form.type == 'article' %}
-                            selected
-                            {% endif %}>
+                            {% if request.form.type == 'article' %}selected{% endif %}>
                             Product
                         </option>
-
                         <option value="service"
-                            {% if request.form.type == 'service' %}
-                            selected
-                            {% endif %}>
+                            {% if request.form.type == 'service' %}selected{% endif %}>
                             Service
                         </option>
-
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Delivery Option</label>
+                    <label>Location</label>
+                    <input
+                        type="text"
+                        name="location"
+                        placeholder="e.g. Medina, Legon, Campus Hostel"
+                        value="{{ request.form.location or '' }}">
+                </div>
 
+                <div class="form-group">
+                    <label>WhatsApp Number</label>
+                    <input
+                        type="text"
+                        name="whatsapp"
+                        placeholder="e.g. 233501234567"
+                        value="{{ request.form.whatsapp or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Delivery Option</label>
                     <div>
                         <label>
-                            <input
-                                type="radio"
-                                name="delivery_method"
-                                value="delivery"
-                                checked>
+                            <input type="radio" name="delivery_method" value="delivery" checked>
                             Delivery
                         </label>
-
                         <label style="margin-left:12px;">
-                            <input
-                                type="radio"
-                                name="delivery_method"
-                                value="pickup">
+                            <input type="radio" name="delivery_method" value="pickup">
                             Pickup
                         </label>
                     </div>
                 </div>
-
-                <!-- BUG FIXED HERE -->
 
                 <div
                     class="form-group"
@@ -138,27 +143,24 @@
                     style="{% if request.form.delivery_method == 'pickup' %}display:block;{% else %}display:none;{% endif %}">
 
                     <label>Pickup Location</label>
-
                     <input
                         type="text"
                         name="pickup_location"
-                        placeholder="Enter pickup location (e.g. campus building)"
+                        placeholder="e.g. Engineering Block"
                         value="{{ request.form.pickup_location or '' }}">
                 </div>
 
                 <div class="form-group">
-                    <label>Image URL</label>
-
+                    <label>Image URL (optional)</label>
                     <input
                         type="url"
                         name="image"
-                        placeholder="Image URL (or leave empty to upload)"
+                        placeholder="Paste an image URL or upload below"
                         value="{{ request.form.image or '' }}">
                 </div>
 
                 <div class="form-group">
-                    <label>Or Upload an Image</label>
-
+                    <label>Or upload an image</label>
                     <input
                         type="file"
                         name="image_file"
@@ -167,18 +169,17 @@
 
                 <div class="form-group">
                     <label>Promotion (%)</label>
-
                     <input
                         type="number"
                         step="1"
+                        min="0"
+                        max="100"
                         name="promo"
                         placeholder="e.g. 10"
                         value="{{ request.form.promo or 0 }}">
                 </div>
 
-                <button type="submit" class="btn-submit">
-                    Publish
-                </button>
+                <button type="submit" class="btn-submit">Post it</button>
 
             </form>
 
@@ -186,42 +187,17 @@
     </div>
 
     <script>
-
     document.addEventListener('DOMContentLoaded', function () {
-
-        const radios =
-            document.querySelectorAll(
-                'input[name="delivery_method"]'
-            );
-
-        const pickupGroup =
-            document.getElementById(
-                'pickup_location_group'
-            );
+        const radios = document.querySelectorAll('input[name="delivery_method"]');
+        const pickupGroup = document.getElementById('pickup_location_group');
 
         radios.forEach(radio => {
-
-            radio.addEventListener(
-                'change',
-                () => {
-
-                    const selected =
-                        document.querySelector(
-                            'input[name="delivery_method"]:checked'
-                        ).value;
-
-                    pickupGroup.style.display =
-                        selected === 'pickup'
-                        ? 'block'
-                        : 'none';
-
-                }
-            );
-
+            radio.addEventListener('change', () => {
+                const selected = document.querySelector('input[name="delivery_method"]:checked').value;
+                pickupGroup.style.display = selected === 'pickup' ? 'block' : 'none';
+            });
         });
-
     });
-
     </script>
 
 </body>

@@ -1558,3 +1558,18 @@ a.post-card {
         margin-top: 16px;
     }
 }
+.my-post-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.my-post-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.my-post-actions .btn-edit {
+    flex: 1;
+    text-align: center;
+}

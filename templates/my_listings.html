@@ -3,63 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Listings - Vendoor</title>
+    <title>My Posts - Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <nav>
+
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+
+        <form method="GET" action="/my_listings" class="nav-search-form">
+            <input type="text" name="q" value="{{ search_query or '' }}" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/posts">Listings</a>
-            <a href="/my_listings">My listings</a>
-            <a href="/publish">Publish</a>
-            <a href="/profile">Profile</a>
-            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ username }}</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="btn-signup">Admin</a>
+            {% endif %}
             <a href="/logout" class="btn-login">Logout</a>
         </div>
     </nav>
 
-    <div class="feed">
-        <div class="page-header">
-            <div>
-                <h2>My listings</h2>
-                <p class="page-subtitle">Manage your published items and services</p>
-            </div>
-            <form method="GET" action="/my_listings" class="search-bar">
-                <input type="search" name="q" value="{{ search_query or '' }}" placeholder="Search your listings...">
-                <button type="submit" class="btn-submit">Search</button>
-            </form>
-        </div>
+    <div class="feed-new">
+
+        {% if search_query %}
+        <p class="search-results-info">
+            {{ posts|length }} result{{ 's' if posts|length != 1 else '' }} for "<strong>{{ search_query }}</strong>" — <a href="/my_listings">Clear</a>
+        </p>
+        {% endif %}
 
         {% if posts %}
-        <div class="cards">
+        <div class="cards-new">
             {% for post in posts %}
-            <div class="card my-listing-card">
-                <a href="/post/{{ post.id }}" class="card-clickable">
+            <div class="card-new my-post-card">
+                <a href="/post/{{ post.id }}" class="card-img-wrapper" style="cursor:pointer;">
                     <img src="{{ image_url(post.image) }}" alt="{{ post.title }}"
-                         onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
-                    <div class="card-info">
-                        <span class="category">{{ post.category }}</span>
-                        <h4>{{ post.title }}</h4>
-                        <p class="price">
-                            GHS {{ '{:,.2f}'.format(post.price) }}
-                            {% if post.promo %}<span class="promo">-{{ post.promo|int }}%</span>{% endif %}
-                        </p>
-                        <p class="card-desc">{{ post.description[:90] }}{% if post.description|length > 90 %}...{% endif %}</p>
-                    </div>
+                         onerror="this.onerror=null;this.src='https://placehold.co/400x300'">
+                    {% if post.promo %}
+                    <span class="card-badge">-{{ post.promo|int }}% OFF</span>
+                    {% endif %}
+                    <span class="card-type-badge">{{ post.type }}</span>
                 </a>
-                <div class="card-actions">
-                    <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit</a>
-                    <form method="POST" action="/post/{{ post.id }}/delete" style="flex:1; display:flex;">
-                        <button type="submit" class="btn-delete" style="width:100%;" onclick="return confirm('Delete this listing?')">Delete</button>
-                    </form>
+                <div class="card-body">
+                    <span class="card-category">{{ post.category }}</span>
+                    <a href="/post/{{ post.id }}" style="text-decoration:none; color:inherit;">
+                        <h4 class="card-title">{{ post.title }}</h4>
+                    </a>
+                    <p class="card-desc">{{ post.description[:70] }}{% if post.description|length > 70 %}...{% endif %}</p>
+                    <div class="card-footer">
+                        <span class="card-price">GHS {{ '{:,.0f}'.format(post.price) }}</span>
+                    </div>
+                    <div class="my-post-actions">
+                        <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit</a>
+                        <form method="POST" action="/post/{{ post.id }}/delete" style="flex:1;">
+                            <button type="submit" class="btn-delete" style="width:100%;" onclick="return confirm('Delete this post?')">Delete</button>
+                        </form>
+                    </div>
                 </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <p class="empty-state">You have no listings yet. <a href="/publish" style="color:#e63946;">Publish your first one</a></p>
+        <div class="no-results">
+            <p>You have no posts yet.</p>
+            <a href="/publish">Create your first post</a>
+        </div>
         {% endif %}
     </div>
 

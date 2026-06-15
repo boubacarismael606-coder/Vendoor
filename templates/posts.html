@@ -3,21 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Listings - Vendoor</title>
+    <title>Posts - Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
-    <nav>
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+
+        <form method="GET" action="/posts" class="nav-search-form">
+            <input type="text" name="q" value="{{ search_query or '' }}" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
             {% if username %}
-            <a href="/publish">Publish</a>
-            <a href="/posts">Listings</a>
-            <a href="/my_listings">My listings</a>
-            <a href="/profile">Profile</a>
-            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ username }}</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="btn-signup">Admin</a>
+            {% endif %}
             <a href="/logout" class="btn-login">Logout</a>
             {% else %}
             <a href="/login" class="btn-login">Login</a>
@@ -26,40 +33,44 @@
         </div>
     </nav>
 
-    <div class="feed">
-        <div class="page-header">
-            <div>
-                <h2>All listings</h2>
-                <p class="page-subtitle">Browse items and services from the campus community</p>
-            </div>
-            <form method="GET" action="/posts" class="search-bar">
-                <input type="search" name="q" value="{{ search_query or '' }}" placeholder="Search by title, category...">
-                <button type="submit" class="btn-submit">Search</button>
-            </form>
-        </div>
+    <div class="feed-new">
 
-        {% if posts %}
-        <div class="cards">
-            {% for post in posts %}
-            <a href="/post/{{ post.id }}" class="card">
-                <img src="{{ image_url(post.image) }}" alt="{{ post.title }}"
-                     onerror="this.onerror=null;this.src='https://placehold.co/300x200'">
-                <div class="card-info">
-                    <span class="category">{{ post.category }}</span>
-                    <h4>{{ post.title }}</h4>
-                    <p class="card-seller">by {{ post.user.username if post.user else 'Unknown' }}</p>
-                    <p class="price">
-                        GHS {{ '{:,.2f}'.format(post.price) }}
-                        {% if post.promo %}<span class="promo">-{{ post.promo|int }}%</span>{% endif %}
-                    </p>
-                    <p class="card-desc">{{ post.description[:90] }}{% if post.description|length > 90 %}...{% endif %}</p>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="empty-state">No listings found. Try another search or publish the first one!</p>
+        {% if search_query %}
+        <p class="search-results-info">
+            {{ posts|length }} result{{ 's' if posts|length != 1 else '' }} for "<strong>{{ search_query }}</strong>" — <a href="/posts">Clear</a>
+        </p>
         {% endif %}
+
+        <div class="cards-new">
+            {% if posts %}
+                {% for post in posts %}
+                <a href="/post/{{ post.id }}" class="card-new">
+                    <div class="card-img-wrapper">
+                        <img src="{{ image_url(post.image) }}" alt="{{ post.title }}"
+                             onerror="this.onerror=null;this.src='https://placehold.co/400x300'">
+                        {% if post.promo %}
+                        <span class="card-badge">-{{ post.promo|int }}% OFF</span>
+                        {% endif %}
+                        <span class="card-type-badge">{{ post.type }}</span>
+                    </div>
+                    <div class="card-body">
+                        <span class="card-category">{{ post.category }}</span>
+                        <h4 class="card-title">{{ post.title }}</h4>
+                        <p class="card-desc">{{ post.description[:70] }}{% if post.description|length > 70 %}...{% endif %}</p>
+                        <div class="card-footer">
+                            <span class="card-price">GHS {{ '{:,.0f}'.format(post.price) }}</span>
+                            <span class="card-seller">by {{ post.user.username if post.user else '—' }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="no-results">
+                    <p>No posts found.</p>
+                    <a href="/posts">Clear search</a>
+                </div>
+            {% endif %}
+        </div>
     </div>
 
 </body>

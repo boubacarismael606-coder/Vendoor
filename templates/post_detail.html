@@ -8,16 +8,23 @@
 </head>
 <body>
 
-    <nav>
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+
+        <form method="GET" action="/" class="nav-search-form">
+            <input type="text" name="q" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
             {% if username %}
-            <a href="/publish">Publish</a>
-            <a href="/posts">Listings</a>
-            <a href="/my_listings">My listings</a>
-            <a href="/profile">Profile</a>
-            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ username }}</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="btn-signup">Admin</a>
+            {% endif %}
             <a href="/logout" class="btn-login">Logout</a>
             {% else %}
             <a href="/login" class="btn-login">Login</a>
@@ -60,19 +67,22 @@
                 {% if post.delivery_method == 'pickup' and post.pickup_location %}
                 <p>📍 <strong>Pickup location:</strong> {{ post.pickup_location }}</p>
                 {% endif %}
+                {% if post.location %}
+                <p>📍 <strong>Location:</strong> {{ post.location }}</p>
+                {% endif %}
                 <p>🕒 <strong>Posted:</strong> {{ post.created_at.strftime('%d %b %Y') }}</p>
                 <p>👤 <strong>Seller:</strong> {{ seller.username }}</p>
-                <p>📞 <strong>Phone:</strong> {{ seller.phone or 'Not provided' }}</p>
             </div>
 
             {% if username and session_user_id != post.user_id %}
             <div class="detail-actions">
-                {% if not seller.phone %}
+                {% set contact_number = post.whatsapp or seller.phone %}
+                {% if not contact_number %}
                 <p style="color:#888; font-size:13px; margin-bottom:8px;">⚠️ Seller hasn't added a phone number yet.</p>
+                <a href="/login" class="btn-whatsapp">💬 Contact seller</a>
+                {% else %}
+                <a href="https://wa.me/{{ contact_number }}" class="btn-whatsapp" target="_blank">💬 Contact via WhatsApp</a>
                 {% endif %}
-                <a href="{% if seller.phone %}https://wa.me/{{ seller.phone }}{% else %}/login{% endif %}"
-                    💬 Contact via WhatsApp
-                </a>
             </div>
             {% elif not username %}
             <div class="detail-actions">
@@ -80,7 +90,7 @@
             </div>
             {% else %}
             <div class="detail-actions">
-                <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit listing</a>
+                <a href="/post/{{ post.id }}/edit" class="btn-edit">Edit post</a>
             </div>
             {% endif %}
 

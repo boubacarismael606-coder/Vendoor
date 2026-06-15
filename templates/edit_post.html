@@ -3,31 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier l'annonce - Vendoor</title>
+    <title>Edit Post - Vendoor</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
-    <nav>
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+
+        <form method="GET" action="/" class="nav-search-form">
+            <input type="text" name="q" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/posts">Listings</a>
-            <a href="/my_listings">My listings</a>
-            <a href="/profile">Profile</a>
-            {% if session.get('role') == 'admin' %}<a href="/admin" class="btn-signup">Admin</a>{% endif %}
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ session.get('username') }}</a>
+            {% if session.get('role') == 'admin' %}
+            <a href="/admin" class="btn-signup">Admin</a>
+            {% endif %}
             <a href="/logout" class="btn-login">Logout</a>
         </div>
     </nav>
 
     <div class="auth-container">
         <div class="auth-box">
-            <h2>Edit listing</h2>
-            <p class="auth-sub">Update your listing details</p>
+            <h2>Edit post</h2>
+            <p class="auth-sub">Update your post details</p>
 
             <form method="POST" action="/post/{{ post.id }}/edit" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label>Listing title</label>
+                    <label>What are you selling?</label>
                     <input type="text" name="title" value="{{ post.title }}" required>
                 </div>
                 <div class="form-group">
@@ -45,16 +53,26 @@
                         <option value="Clothing" {% if post.category == 'Clothing' %}selected{% endif %}>Clothing</option>
                         <option value="Accessories" {% if post.category == 'Accessories' %}selected{% endif %}>Accessories</option>
                         <option value="Furniture" {% if post.category == 'Furniture' %}selected{% endif %}>Furniture</option>
+                        <option value="Food & Drinks" {% if post.category == 'Food & Drinks' %}selected{% endif %}>Food & Drinks</option>
                         <option value="Service" {% if post.category == 'Service' %}selected{% endif %}>Service</option>
+                        <option value="Delivery" {% if post.category == 'Delivery' %}selected{% endif %}>Delivery</option>
                         <option value="Other" {% if post.category == 'Other' %}selected{% endif %}>Other</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Type</label>
                     <select name="type" required>
-                        <option value="article" {% if post.type == 'article' %}selected{% endif %}>Article</option>
+                        <option value="article" {% if post.type == 'article' %}selected{% endif %}>Product</option>
                         <option value="service" {% if post.type == 'service' %}selected{% endif %}>Service</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" name="location" value="{{ post.location or '' }}" placeholder="e.g. Medina, Legon, Campus Hostel">
+                </div>
+                <div class="form-group">
+                    <label>WhatsApp Number</label>
+                    <input type="text" name="whatsapp" value="{{ post.whatsapp or '' }}" placeholder="e.g. 233501234567">
                 </div>
                 <div class="form-group">
                     <label>Delivery option</label>
@@ -68,22 +86,22 @@
                     <input type="text" name="pickup_location" value="{{ post.pickup_location or '' }}" placeholder="Enter pickup location">
                 </div>
                 <div class="form-group">
-                    <label>Image actuelle</label>
+                    <label>Current image</label>
                     <img src="{{ image_url(post.image) }}" alt="{{ post.title }}" style="max-width: 200px; border-radius: 8px;">
                 </div>
                 <div class="form-group">
-                    <label>Changer l'image (optionnel)</label>
+                    <label>Change image (optional)</label>
                     <input type="file" name="image_file" accept="image/*">
                 </div>
                 <div class="form-group">
                     <label>Promotion (%)</label>
-                    <input type="number" step="1" name="promo" value="{{ post.promo }}" placeholder="ex: 10">
+                    <input type="number" step="1" name="promo" value="{{ post.promo }}" placeholder="e.g. 10">
                 </div>
                 <button type="submit" class="btn-submit">Save changes</button>
             </form>
 
             <p style="text-align: center; margin-top: 20px;">
-                <a href="/my_listings" style="color: #e63946; text-decoration: none;">← Back to my listings</a>
+                <a href="/my_listings" style="color: #e63946; text-decoration: none;">← Back to my posts</a>
             </p>
         </div>
     </div>

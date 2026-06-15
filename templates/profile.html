@@ -8,13 +8,19 @@
 </head>
 <body>
 
-    <nav>
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+
+        <form method="GET" action="/" class="nav-search-form">
+            <input type="text" name="q" placeholder="Search...">
+            <button type="submit">🔍</button>
+        </form>
+
         <div class="nav-links">
-            <a href="/">Home</a>
-            <a href="/publish">Publish</a>
-            <a href="/posts">Listings</a>
-            <a href="/my_listings">My listings</a>
+            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/posts">Posts</a>
+            <a href="/my_listings">My posts</a>
+            <a href="/profile">{{ user.username }}</a>
             {% if session.get('role') == 'admin' %}
             <a href="/admin" class="btn-signup">Admin</a>
             {% endif %}
@@ -56,7 +62,7 @@
 
         <div class="profile-edit-card">
             <h3>Update phone number</h3>
-            <p class="profile-edit-sub">Your phone number is used for WhatsApp contact on your listings.</p>
+            <p class="profile-edit-sub">Your phone number is used as a fallback for WhatsApp contact on your posts.</p>
 
             {% if success %}
             <div class="alert-success">{{ success }}</div>
@@ -72,9 +78,9 @@
         </div>
 
         <div class="profile-listings-card">
-            <h3>My listings</h3>
-            <p class="profile-edit-sub">{{ user.posts|length }} listing{{ 's' if user.posts|length != 1 else '' }} published</p>
-            <a href="/my_listings" class="btn-main" style="display:inline-block; margin-top:12px;">View my listings</a>
+            <h3>My posts</h3>
+            <p class="profile-edit-sub">{{ user.posts|length }} post{{ 's' if user.posts|length != 1 else '' }} published</p>
+            <a href="/my_listings" class="btn-main" style="display:inline-block; margin-top:12px;">View my posts</a>
         </div>
 
     </div>
