@@ -1573,3 +1573,45 @@ a.post-card {
     flex: 1;
     text-align: center;
 }
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+.status-dot.online { background: #2a9d8f; }
+.status-dot.offline { background: #ccc; }
+
+.settings-dropdown {
+    position: relative;
+}
+.settings-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px;
+}
+.settings-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 36px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    min-width: 160px;
+    overflow: hidden;
+    z-index: 200;
+}
+.settings-menu.show { display: block; }
+.settings-menu a {
+    display: block;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: #333;
+    font-size: 14px;
+}
+.settings-menu a:hover { background: #f5f5f5; }

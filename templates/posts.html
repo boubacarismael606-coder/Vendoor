@@ -21,12 +21,27 @@
             <a href="/publish" class="btn-publish">+ New post</a>
             <a href="/posts">Posts</a>
             <a href="/my_listings">My posts</a>
-            <a href="/profile">{{ username }}</a>
-            {% if session.get('role') == 'admin' %}
-            <a href="/admin" class="btn-signup">Admin</a>
-            {% endif %}
-            <a href="/logout" class="btn-login">Logout</a>
-            {% else %}
+            <div class="settings-dropdown">
+                <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+                <div class="settings-menu" id="settingsMenu">
+                    <a href="/profile">👤 Profile</a>
+                    {% if session.get('role') == 'admin' %}
+                    <a href="/admin">🛠 Admin</a>
+                    {% endif %}
+                    <a href="/logout">🚪 Logout</a>
+                </div>
+            </div>
+
+            <script>
+            function toggleSettings() {
+                document.getElementById('settingsMenu').classList.toggle('show');
+            }
+            window.addEventListener('click', function(e) {
+                if (!e.target.closest('.settings-dropdown')) {
+                    document.getElementById('settingsMenu').classList.remove('show');
+                }
+            });
+            </script>
             <a href="/login" class="btn-login">Login</a>
             <a href="/register" class="btn-signup">Sign up</a>
             {% endif %}

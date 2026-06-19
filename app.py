@@ -8,6 +8,16 @@ import json
 import cloudinary
 import cloudinary.uploader
 from sqlalchemy import func, text
+from datetime import datetime, timedelta
+from flask_mail import Mail, Message
+import secrets
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+mail = Mail(app)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vendoor-secret-key')
@@ -54,6 +64,7 @@ class User(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     role = db.Column(db.String(10), default='user')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime, nullable=True)
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -81,8 +92,15 @@ class Transaction(db.Model):
     commission = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    reset_token = db.Column(db.String(100), nullable=True)
 # --- ROUTES ---
-
+@app.before_request
+def update_last_seen():
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            user.last_seen = datetime.utcnow()
+            db.session.commit()
 @app.route('/')
 def home():
     username = session.get('username')
@@ -199,6 +217,9 @@ def register():
     if request.method == 'POST':
         username = request.form['username'].strip()
         email = request.form['email'].strip().lower()
+        EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(EMAIL_REGEX, email):
+            return render_template('register.html', error="Please enter a valid email address (e.g. name@gmail.com).")
         password = request.form['password']
         confirm = request.form['confirm_password']
         phone = request.form.get('phone', '').strip()
@@ -331,7 +352,52 @@ def delete_post(post_id):
     db.session.delete(post)
     db.session.commit()
     return redirect(url_for('posts_list'))
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email'].strip().lower()
+        user = User.query.filter(func.lower(User.email) == email).first()
 
+        if user:
+            token = secrets.token_urlsafe(32)
+            user.reset_token = token
+            db.session.commit()
+
+            reset_link = url_for('reset_password', token=token, _external=True)
+            try:
+                msg = Message('Reset your Vendoor password',
+                               sender=os.environ.get('MAIL_USERNAME'),
+                               recipients=[email])
+                msg.body = f"Click this link to reset your password: {reset_link}\n\nIf you didn't request this, ignore this email."
+                mail.send(msg)
+            except Exception as e:
+                print(f"Mail error: {e}")
+
+        return render_template('forgot_password.html', success="If this email exists, a reset link has been sent.")
+
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user = User.query.filter_by(reset_token=token).first()
+    if not user:
+        return render_template('login.html', error="Invalid or expired reset link.")
+
+    if request.method == 'POST':
+        password = request.form['password']
+        confirm = request.form['confirm_password']
+
+        if len(password) < 6:
+            return render_template('reset_password.html', token=token, error="Password must be at least 6 characters.")
+        if password != confirm:
+            return render_template('reset_password.html', token=token, error="Passwords do not match.")
+
+        user.password = bcrypt.generate_password_hash(password).decode('utf-8')
+        user.reset_token = None
+        db.session.commit()
+        return render_template('login.html', error="Password updated! You can log in now.")
+
+    return render_template('reset_password.html', token=token)
 # --- ADMIN ---
 
 def admin_required(f):
@@ -348,11 +414,18 @@ def admin_required(f):
 
 @app.route('/admin')
 @admin_required
+@app.route('/admin')
+@admin_required
 def admin_dashboard():
     total_users = User.query.count()
     total_posts = Post.query.count()
     recent_posts = Post.query.order_by(Post.created_at.desc()).limit(10).all()
     recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
+
+    online_threshold = datetime.utcnow() - timedelta(minutes=5)
+    for user in recent_users:
+        user.is_online = user.last_seen and user.last_seen >= online_threshold
+
     return render_template('admin.html',
         total_users=total_users,
         total_posts=total_posts,
@@ -466,6 +539,17 @@ def init_db():
             print("Admin créé ✅")
 
         print("Base de données prête ✅")
+        try:
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN last_seen TIMESTAMP"))
+            conn.commit()
+            print("Colonne last_seen ajoutée ✅")
+        except Exception:
+            conn.rollback()
+        try:
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN reset_token VARCHAR(100)"))
+            conn.commit()
+        except Exception:
+            conn.rollback()
 init_db()
 
 if __name__ == '__main__':

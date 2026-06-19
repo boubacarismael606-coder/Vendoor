@@ -5,3 +5,4 @@ Werkzeug>=2.0
 psycopg2-binary>=2.9
 gunicorn>=20.0
 cloudinary>=1.36
+Flask-Mail>=0.9

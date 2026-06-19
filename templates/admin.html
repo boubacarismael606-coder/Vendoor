@@ -63,6 +63,7 @@
                             <th>Username</th>
                             <th>Email</th>
                             <th>Phone</th>
+                            <th>Status</th>
                             <th>Role</th>
                             <th>Actions</th>
                         </tr>
@@ -73,6 +74,10 @@
                             <td><strong>{{ user.username }}</strong></td>
                             <td>{{ user.email }}</td>
                             <td>{{ user.phone or '—' }}</td>
+                            <td>
+                                <span class="status-dot {{ 'online' if user.is_online else 'offline' }}"></span>
+                                    {{ 'Online' if user.is_online else 'Offline' }}
+                            </td>
                             <td>
                                 <span class="role-badge {{ 'badge-admin' if user.role == 'admin' else 'badge-banned' if user.role == 'banned' else 'badge-user' }}">
                                     {{ user.role }}
