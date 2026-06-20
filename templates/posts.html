@@ -10,15 +10,16 @@
 
     <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
+        <a href="/" class="home-icon-btn" title="Home">🏠</a>
 
-        <form method="GET" action="/posts" class="nav-search-form">
-            <input type="text" name="q" value="{{ search_query or '' }}" placeholder="Search...">
+        <form method="GET" action="/" class="nav-search-form">
+            <input type="text" name="q" placeholder="Search for a post...">
             <button type="submit">🔍</button>
         </form>
 
         <div class="nav-links">
             {% if username %}
-            <a href="/publish" class="btn-publish">+ New post</a>
+            <a href="/publish" class="btn-publish">+ Publish</a>
             <a href="/posts">Posts</a>
             <a href="/my_listings">My posts</a>
             <div class="settings-dropdown">
@@ -31,17 +32,7 @@
                     <a href="/logout">🚪 Logout</a>
                 </div>
             </div>
-
-            <script>
-            function toggleSettings() {
-                document.getElementById('settingsMenu').classList.toggle('show');
-            }
-            window.addEventListener('click', function(e) {
-                if (!e.target.closest('.settings-dropdown')) {
-                    document.getElementById('settingsMenu').classList.remove('show');
-                }
-            });
-            </script>
+            {% else %}
             <a href="/login" class="btn-login">Login</a>
             <a href="/register" class="btn-signup">Sign up</a>
             {% endif %}
