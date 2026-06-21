@@ -8,9 +8,8 @@
 </head>
 <body>
 
-    <<nav class="nav-new">
+    <nav class="nav-new">
         <a href="/" class="logo">Vendoor</a>
-        <a href="/" class="home-icon-btn" title="Home">🏠</a>
 
         <form method="GET" action="/" class="nav-search-form">
             <input type="text" name="q" placeholder="Search for a post...">
@@ -18,6 +17,7 @@
         </form>
 
         <div class="nav-links">
+            <a href="/" class="home-icon-btn" title="Home">🏠</a>
             {% if username %}
             <a href="/publish" class="btn-publish">+ Publish</a>
             <a href="/posts">Posts</a>
@@ -102,6 +102,17 @@
 
         </div>
     </div>
+
+    <script>
+    function toggleSettings() {
+        document.getElementById('settingsMenu').classList.toggle('show');
+    }
+    window.addEventListener('click', function(e) {
+        if (!e.target.closest('.settings-dropdown')) {
+            document.getElementById('settingsMenu').classList.remove('show');
+        }
+    });
+    </script>
 
 </body>
 </html>
