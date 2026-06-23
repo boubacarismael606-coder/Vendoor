@@ -10,20 +10,14 @@ import json
 import secrets
 import cloudinary
 import cloudinary.uploader
+import resend
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vendoor-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///vendoor.db')
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle': 280}
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 
-db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
-mail = Mail(app)
+resend.api_key = os.environ.get('RESEND_API_KEY')
 
 cloudinary.config(
     cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
@@ -374,13 +368,19 @@ def forgot_password():
 
             reset_link = url_for('reset_password', token=token, _external=True)
             try:
-                msg = Message('Reset your Vendoor password',
-                               sender=os.environ.get('MAIL_USERNAME'),
-                               recipients=[email])
-                msg.body = f"Click this link to reset your password: {reset_link}\n\nIf you didn't request this, ignore this email."
-                mail.send(msg)
+                resend.Emails.send({
+                    "from": "Vendoor <onboarding@resend.dev>",
+                    "to": [email],
+                    "subject": "Reset your Vendoor password",
+                    "html": f"""
+                        <h2>Reset your password</h2>
+                        <p>Click the link below to reset your Vendoor password:</p>
+                        <a href="{reset_link}" style="background:#e63946;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;">Reset password</a>
+                        <p>If you didn't request this, ignore this email.</p>
+                    """
+                })
             except Exception as e:
-                print(f"Mail error: {e}")
+                print(f"Resend error: {e}")
 
         return render_template('forgot_password.html', success="If this email exists, a reset link has been sent.")
 
