@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, R
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, text
 from flask_bcrypt import Bcrypt
-from flask_mail import Mail, Message
 from datetime import datetime, timedelta
 import os
 import re
@@ -17,6 +16,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'vendoor-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///vendoor.db')
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle': 280}
 
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
 resend.api_key = os.environ.get('RESEND_API_KEY')
 
 cloudinary.config(
